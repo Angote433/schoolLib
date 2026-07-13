@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCandidateName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Student Name"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A2E"/>
+
+            <TextView
+                android:id="@+id/tvCandidateMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ADM001 • Issued: 2026-01-01"
+                android:textSize="11sp"
+                android:textColor="#888888"
+                android:layout_marginTop="2dp"/>
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnCandidateReturn"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="✓ Return"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:backgroundTint="#2B6CB0"
+            android:textColor="#FFFFFF"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"/>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

@@ -136,6 +136,42 @@
 
             </LinearLayout>
 
+            <!-- Return candidates table — ISBN scan in return mode -->
+            <LinearLayout
+                android:id="@+id/layoutReturnCandidates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tap ✓ Return next to the student returning this book"
+                    android:textSize="12sp"
+                    android:textColor="#555555"
+                    android:layout_marginBottom="6dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerReturnCandidates"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"/>
+
+                <TextView
+                    android:id="@+id/tvNoCandidates"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No students in your stream have this book assigned"
+                    android:textSize="13sp"
+                    android:textColor="#888888"
+                    android:gravity="center"
+                    android:padding="16dp"
+                    android:visibility="gone"/>
+
+            </LinearLayout>
+
             <!-- Student picker (assign mode) -->
             <LinearLayout
                 android:id="@+id/layoutStudentPicker"

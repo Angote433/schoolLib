@@ -19,4 +19,12 @@ public interface DistributionRecordRepo extends JpaRepository<DistributionRecord
     Optional<DistributionRecord>findByBookCopyBookIdAndStatus(int bookID, DistributionStatus distributionStatus);
 
     List<DistributionRecord> findByStudentStudentId(int studentId);
+
+    //return flow - students in a stream currently holding a copy of a given ISBN title
+    List<DistributionRecord> findByStatusAndBookCopyBookDetailsIsbnAndStudentStreamStreamId(
+            DistributionStatus status, String isbn, int streamId);
+
+    //prevent assigning a student two copies of the same title
+    boolean existsByStatusAndStudentStudentIdAndBookCopyBookDetailsDetailsId(
+            DistributionStatus status, int studentId, int detailsId);
 }

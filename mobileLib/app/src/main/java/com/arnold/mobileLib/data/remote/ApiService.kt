@@ -33,6 +33,16 @@ interface ApiService {
         @Path("qrCode") qrCode: String
     ): Response<BookCopy>
 
+    @GET("books/isbn/{isbn}")
+    suspend fun getBookByIsbn(
+        @Path("isbn") isbn: String
+    ): Response<BookDetails>
+
+    @GET("books/accession/{accessionNumber}")
+    suspend fun getBookByAccession(
+        @Path("accessionNumber") accessionNumber: String
+    ): Response<BookCopy>
+
     //  DISTRIBUTIONS
     @POST("distributions")
     suspend fun distributeBook(
@@ -49,6 +59,17 @@ interface ApiService {
         @Path("streamId") streamId: Int,
         @Path("year") year: Int
     ): Response<List<DistributionRecord>>
+
+    @GET("distributions/isbn/{isbn}/stream/{streamId}")
+    suspend fun getActiveByIsbnAndStream(
+        @Path("isbn") isbn: String,
+        @Path("streamId") streamId: Int
+    ): Response<List<DistributionRecord>>
+
+    @POST("distributions/by-accession")
+    suspend fun distributeByAccession(
+        @Body request: AccessionDistributionRequest
+    ): Response<DistributionRecord>
 
     @POST("distributions/loss")
     suspend fun flagLost(

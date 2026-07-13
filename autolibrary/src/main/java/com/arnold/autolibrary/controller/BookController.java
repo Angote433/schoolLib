@@ -103,6 +103,28 @@ public class BookController {
         }
     }
 
+    //Teacher scans ISBN barcode on book back cover - returns the title details
+    @GetMapping("/isbn/{isbn}")
+    public ResponseEntity<?>getBookByIsbn(@PathVariable String isbn){
+        try{
+            BookDetails book = bookService.getByIsbn(isbn);
+            return ResponseEntity.ok(book);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    //Teacher types the accession number written inside the book cover
+    @GetMapping("/accession/{accessionNumber}")
+    public ResponseEntity<?>getByAccessionNumber(@PathVariable String accessionNumber){
+        try{
+            BookCopy copy = bookService.findByAccessionNumber(accessionNumber);
+            return ResponseEntity.ok(copy);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     //Generates and returns qr as image-Librarian to use this to print the stickers
     @GetMapping("/copies/{copyId}/qr-image")
     public ResponseEntity<?>getQrCodeImage(@PathVariable int copyId){

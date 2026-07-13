@@ -19,6 +19,9 @@ public class BookCopy {
     @Column(nullable = false,unique = true, length = 50)
     private String qrCode;
 
+    @Column(name = "accession_number", length = 20, unique = true)
+    private String accessionNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookStatus status;
@@ -47,6 +50,9 @@ public class BookCopy {
 
     public String getQrCode() { return qrCode; }
     public void setQrCode(String qrCode) { this.qrCode = qrCode; }
+
+    public String getAccessionNumber() { return accessionNumber; }
+    public void setAccessionNumber(String accessionNumber) { this.accessionNumber = accessionNumber; }
 
     public BookStatus getStatus() { return status; }
     public void setStatus(BookStatus status) { this.status = status; }

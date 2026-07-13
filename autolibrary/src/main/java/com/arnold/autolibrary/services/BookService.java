@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class BookService {
@@ -35,30 +34,33 @@ public class BookService {
             .orElseThrow(()->new RuntimeException("Book with id: "+ detailsId + " not found"));}
 
     //book copies
-    @Transactional
-    public BookCopy registerCopy(int detailsId, LocalDate dateAcquired){
-        BookDetails details = getBookByID(detailsId);
-
-        //qr genetation
-        String qrCode = generateUniqueQrCode(detailsId);
-        BookCopy copy  = new BookCopy(details,qrCode,dateAcquired);
-
-        BookCopy savedCopy = bookCopyRepo.save(copy);
-
-        //update number of copies count
-        details.setCopies(details.getCopies() + 1);
-        bookDetailsRepo.save(details);
-
-        return savedCopy;
-
+    //Accession number format: ACC-{detailsId}-{sequentialNumber padded to 4 digits}
+    //e.g. ACC-3-0001. The librarian writes this number inside the physical book.
+    private String generateAccessionNumber(int detailsId, int sequenceNumber){
+        return String.format("ACC-%d-%04d", detailsId, sequenceNumber);
     }
-    //registering multiple copies at once
+
+    //registering multiple copies at once - each copy gets a sequential accession number
+    //qrCode is kept in sync with accessionNumber for backward compatibility
     @Transactional
     public List<BookCopy>registerMultipleCopies(int detailsId,int quantity,LocalDate date){
+        BookDetails details = getBookByID(detailsId);
+
+        int existingCount = bookCopyRepo.countByBookDetailsDetailsId(detailsId);
+
         List<BookCopy>copies = new ArrayList<>();
-        for(int i = 0;i< quantity;i++){
-            copies.add(registerCopy(detailsId,date));
+        for(int i = 1;i<= quantity;i++){
+            int sequenceNumber = existingCount + i;
+            String accessionNumber = generateAccessionNumber(detailsId, sequenceNumber);
+
+            BookCopy copy = new BookCopy(details, accessionNumber, date);
+            copy.setAccessionNumber(accessionNumber);
+
+            copies.add(bookCopyRepo.save(copy));
         }
+
+        details.setCopies(existingCount + quantity);
+        bookDetailsRepo.save(details);
 
         return copies;
     }
@@ -68,22 +70,27 @@ public class BookService {
         -> new RuntimeException("No book found with qr code "+ qrCode
         +" .Book may not be registered in the system"));
     }
+
+    //Teacher types the accession number written inside the book
+    public BookCopy findByAccessionNumber(String accessionNumber){
+        return bookCopyRepo.findByAccessionNumber(accessionNumber).orElseThrow(()
+        -> new RuntimeException("No book found with accession number: " + accessionNumber
+        + ". Check the number written inside the book."));
+    }
+
+    //Teacher scans the ISBN barcode on the book's back cover
+    public BookDetails getByIsbn(String isbn){
+        return bookDetailsRepo.findByIsbn(isbn).orElseThrow(()
+        -> new RuntimeException("No book registered with ISBN: " + isbn
+        + ". Ask the librarian to register this book title first."));
+    }
+
     public List<BookCopy>getCopiesByByBook(int detailsId){
         return bookCopyRepo.findByBookDetailsDetailsId(detailsId);
     }
     public List<BookCopy>getAvailableCopies(int detailsId){
         return bookCopyRepo.findByBookDetailsDetailsIdAndStatus(detailsId, BookStatus.AVAILABLE);
     }
-
-    private String generateUniqueQrCode(int detailsId){
-        String qrCode;
-        do{
-            qrCode = "BOOK-"+detailsId + "-"+UUID.randomUUID().toString()
-                    .substring(0,8).toUpperCase();
-        }while(bookCopyRepo.existsByQrCode(qrCode));
-        return qrCode;
-    }
-
 
     public BookCopy getCopyById(int copyId) {
         return bookCopyRepo.findById(copyId).orElseThrow(

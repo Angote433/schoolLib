@@ -66,7 +66,11 @@ export const bookService = {
   scanByQr: (qrCode) => api.get(`/books/scan/${encodeURIComponent(qrCode)}`),
   // QR image URL — used directly in <img src={...} />
   getQrImageUrl: (copyId) =>
-    `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/books/copies/${copyId}/qr-image`
+    `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/books/copies/${copyId}/qr-image`,
+  getByIsbn: (isbn) =>
+    api.get(`/books/isbn/${isbn}`),
+  getByAccession: (accessionNumber) =>
+    api.get(`/books/accession/${encodeURIComponent(accessionNumber)}`),
 };
 
 // ── DISTRIBUTIONS ─────────────────────────────────────
@@ -80,6 +84,10 @@ export const distributionService = {
   getByYear: (year) => api.get(`/distributions/year/${year}`),
   getByStreamAndYear: (streamId, year) =>
     api.get(`/distributions/stream/${streamId}/year/${year}`),
+  getActiveByIsbnAndStream: (isbn, streamId) =>
+    api.get(`/distributions/isbn/${encodeURIComponent(isbn)}/stream/${streamId}`),
+  distributeByAccession: (data) =>
+    api.post('/distributions/by-accession', data),
 };
 
 // ── BORROWS ───────────────────────────────────────────

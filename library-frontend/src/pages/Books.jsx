@@ -63,6 +63,7 @@ export default function Books() {
     subject: '',
     gradeLevel: '',
     publisher: '',
+    isbn: '',
   });
 
   const [copiesForm, setCopiesForm] = useState({
@@ -139,13 +140,14 @@ export default function Books() {
       await bookService.create({
         ...titleForm,
         gradeLevel: parseInt(titleForm.gradeLevel),
+        isbn: titleForm.isbn || null,
       });
       showSuccess('Book title registered successfully');
       closeModal();
       loadBooks();
       setTitleForm({
         titleName: '', subject: '',
-        gradeLevel: '', publisher: '',
+        gradeLevel: '', publisher: '', isbn: '',
       });
     } catch (err) {
       setError(err.response?.data || 'Failed to register book');
@@ -168,7 +170,7 @@ export default function Books() {
       );
 
       showSuccess(
-        `${copiesForm.quantity} copies registered with QR codes`
+        `${copiesForm.quantity} copies registered with accession numbers`
       );
       closeModal();
       loadBooks();
@@ -606,6 +608,20 @@ export default function Books() {
                 })}
               />
             </FormField>
+            <FormField label="ISBN (for barcode scanning)">
+              <input
+                style={styles.input}
+                placeholder="e.g. 9789966254123"
+                value={titleForm.isbn}
+                onChange={e => setTitleForm({
+                  ...titleForm, isbn: e.target.value,
+                })}
+              />
+              <span style={styles.inputHint}>
+                Found on the barcode on the back cover of the book.
+                Teachers scan this to look up the title during returns.
+              </span>
+            </FormField>
             <div style={styles.modalActions}>
               <button
                 type="button"
@@ -642,7 +658,9 @@ export default function Books() {
 
             <div style={styles.infoBox}>
               📌 Each copy will automatically receive a unique
-              QR code. You can print them after registering.
+              accession number (e.g. ACC-1-0001).
+              Write this number inside the front cover of each book.
+              Teachers will use this number to assign books to students.
             </div>
 
             <FormField label="Number of Copies">
@@ -749,7 +767,7 @@ export default function Books() {
                   }}
                 />
                 <div style={styles.qrPreviewCode}>
-                  {copy.qrCode}
+                  {copy.accessionNumber || copy.qrCode}
                 </div>
                 <div style={styles.qrPreviewTitle}>
                   {expandedBook?.titleName}
@@ -786,7 +804,7 @@ export default function Books() {
                 alt={`Barcode: ${copy.qrCode}`}
                 style={copyStyles.qrImg}
               />
-              <div className="printCode" style={styles.printCode}>{copy.qrCode}</div>
+              <div className="printCode" style={styles.printCode}>{copy.accessionNumber || copy.qrCode}</div>
               <div className="printBookTitle" style={styles.printBookTitle}>
                 {expandedBook?.titleName}
               </div>
@@ -855,8 +873,8 @@ function CopyCard({ copy, bookTitle, isSelected, onToggleSelect }) {
         }}
       />
 
-      {/* QR Code text */}
-      <div style={copyStyles.qrCode}>{copy.qrCode}</div>
+      {/* Accession number text */}
+      <div style={copyStyles.qrCode}>{copy.accessionNumber || copy.qrCode}</div>
 
       {/* Date */}
       <div style={copyStyles.date}>

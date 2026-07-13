@@ -139,4 +139,53 @@ public class DistributionService {
         return distRepo.findByAcademicYear(year);
     }
 
+    /*
+    Return flow: teacher scans the ISBN on the book's back cover.
+    Shows every student in their stream currently holding a copy of that title
+    so the teacher can tick off the one returning it.
+     */
+    public List<DistributionRecord> getActiveByIsbnAndStream(String isbn, int streamId){
+        return distRepo.findByStatusAndBookCopyBookDetailsIsbnAndStudentStreamStreamId(
+                DistributionStatus.DISTRIBUTED, isbn, streamId);
+    }
+
+    /*
+    Assign flow: teacher types/scans the accession number written inside the book,
+    confirms the title, picks the student, and this assigns the specific copy.
+     */
+    @Transactional
+    public DistributionRecord distributeByAccessionNumber(String accessionNumber, int studentId,
+                                                           int academicYear, UserDetails distributedBy){
+
+        BookCopy book = bookRepo.findByAccessionNumber(accessionNumber).orElseThrow(()->
+                new RuntimeException("No book found with accession number: " + accessionNumber));
+
+        if(book.getStatus() != BookStatus.AVAILABLE){
+            throw new RuntimeException("This copy is not available. Current status: " + book.getStatus());
+        }
+
+        Student student = studRepo.findById(studentId).orElseThrow(
+                ()->new RuntimeException("Student not found ")
+        );
+        if(!student.isActive()){
+            throw new RuntimeException("Cannot distribute to inactive student");
+        }
+
+        boolean alreadyHasCopy = distRepo.existsByStatusAndStudentStudentIdAndBookCopyBookDetailsDetailsId(
+                DistributionStatus.DISTRIBUTED, studentId, book.getBookDetails().getDetailsId());
+
+        if(alreadyHasCopy){
+            throw new RuntimeException(student.getFullName() + " already has a copy of: "
+                    + book.getBookDetails().getTitleName());
+        }
+
+        DistributionRecord distributionRecord = new DistributionRecord(book, student, academicYear, distributedBy);
+        distRepo.save(distributionRecord);
+
+        book.setStatus(BookStatus.DISTRIBUTED);
+        bookRepo.save(book);
+
+        return distributionRecord;
+    }
+
 }

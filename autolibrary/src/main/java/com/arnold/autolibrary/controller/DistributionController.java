@@ -91,6 +91,61 @@ public class DistributionController {
         return ResponseEntity.ok(distService.getByYear(academicYear));
     }
 
+    /*
+    Return flow: teacher scans ISBN on the book's back cover.
+    Returns the table of students in their stream currently holding that title.
+     */
+    @GetMapping("/isbn/{isbn}/stream/{streamId}")
+    public ResponseEntity<?>getActiveByIsbnAndStream(@PathVariable String isbn, @PathVariable int streamId){
+        try{
+            List<DistributionRecord> records = distService.getActiveByIsbnAndStream(isbn, streamId);
+            return ResponseEntity.ok(records);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /*
+    Assign flow: teacher types/scans the accession number written inside the book,
+    confirms the title, selects the student, then this assigns the specific copy.
+     */
+    @PostMapping("/by-accession")
+    public ResponseEntity<?>distributeByAccession(@RequestBody AccessionDistributionRequest request){
+        try{
+            UserDetails teacher = userService.getUserById(request.getTeacherId());
+
+            DistributionRecord record = distService.distributeByAccessionNumber(
+                    request.getAccessionNumber(),
+                    request.getStudentId(),
+                    request.getAcademicYear(),
+                    teacher
+            );
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(record);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    public static class AccessionDistributionRequest {
+        private String accessionNumber;
+        private int studentId;
+        private int academicYear;
+        private int teacherId;
+
+        public String getAccessionNumber() { return accessionNumber; }
+        public void setAccessionNumber(String accessionNumber) { this.accessionNumber = accessionNumber; }
+
+        public int getStudentId() { return studentId; }
+        public void setStudentId(int studentId) { this.studentId = studentId; }
+
+        public int getAcademicYear() { return academicYear; }
+        public void setAcademicYear(int academicYear) { this.academicYear = academicYear; }
+
+        public int getTeacherId() { return teacherId; }
+        public void setTeacherId(int teacherId) { this.teacherId = teacherId; }
+    }
+
     public static class DistributionRequest {
         private String qrCode;
         private int studentId;

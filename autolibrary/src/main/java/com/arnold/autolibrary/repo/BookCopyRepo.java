@@ -17,4 +17,11 @@ public interface BookCopyRepo extends JpaRepository<BookCopy,Integer> {
     List<BookCopy> findByBookDetailsDetailsIdAndStatus(int detailsId, BookStatus bookStatus);
 
     boolean existsByQrCode(String qrCode);
+
+    Optional<BookCopy> findByAccessionNumber(String accessionNumber);
+    boolean existsByAccessionNumber(String accessionNumber);
+    int countByBookDetailsDetailsId(int detailsId);
+
+    Optional<BookCopy> findFirstByBookDetailsDetailsIdAndStatus(int detailsId, BookStatus status);
+    Optional<BookCopy> findFirstByBookDetailsIsbnAndStatus(String isbn, BookStatus status);
 }

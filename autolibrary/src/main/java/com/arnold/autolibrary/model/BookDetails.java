@@ -21,6 +21,10 @@ public class BookDetails {
     private int gradeLevel;
     @Column(length = 100)//optional
     private String publisher;
+
+    @Column(name = "isbn", length = 20)
+    private String isbn;
+
     @Column(nullable = false)
     private int copies;
 
@@ -57,6 +61,9 @@ public class BookDetails {
 
     public String getPublisher() { return publisher; }
     public void setPublisher(String publisher) { this.publisher = publisher; }
+
+    public String getIsbn() { return isbn; }
+    public void setIsbn(String isbn) { this.isbn = isbn; }
 
     public int getCopies() { return copies; }
     public void setCopies(int copies) { this.copies = copies; }

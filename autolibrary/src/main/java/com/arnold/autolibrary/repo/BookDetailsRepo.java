@@ -13,6 +13,9 @@ public interface BookDetailsRepo extends JpaRepository<BookDetails,Integer> {
    List<BookDetails>findBySubject(String subjectName);
    List<BookDetails>findByGradeLevel(int gradeLevel);
 
+   Optional<BookDetails> findByIsbn(String isbn);
+   boolean existsByIsbn(String isbn);
+
 
 
 

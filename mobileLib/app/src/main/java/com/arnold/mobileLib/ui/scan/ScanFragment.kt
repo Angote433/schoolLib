@@ -40,6 +40,13 @@ class ScanFragment : Fragment() {
     // it when the assign/return button is tapped
     private var lastScannedCode: String = ""
 
+    // The ISBN last scanned (return mode) — used to reload the
+    // return candidates table
+    private var lastScannedIsbn: String = ""
+
+    // Return candidates adapter (ISBN scan in return mode)
+    private lateinit var returnCandidatesAdapter: ReturnCandidatesAdapter
+
     // Camera
     private lateinit var cameraExecutor: ExecutorService
     private var isScanning = true  // paused after a successful scan
@@ -82,9 +89,44 @@ class ScanFragment : Fragment() {
 
         setupModeButtons()
         setupStudentPicker()
+        setupReturnCandidates()
         setupClickListeners()
         observeViewModel()
         requestCameraPermission()
+    }
+
+    private fun setupReturnCandidates() {
+        returnCandidatesAdapter = ReturnCandidatesAdapter { record ->
+            val qrCode = record.bookCopy?.qrCode ?: return@ReturnCandidatesAdapter
+            viewModel.returnBook(qrCode)
+        }
+        binding.recyclerReturnCandidates.layoutManager =
+            LinearLayoutManager(requireContext())
+        binding.recyclerReturnCandidates.adapter = returnCandidatesAdapter
+
+        viewModel.returnCandidates.observe(viewLifecycleOwner) { result ->
+            when (result) {
+                null -> {
+                    binding.layoutReturnCandidates.visibility = View.GONE
+                }
+                is Resource.Loading -> {
+                    binding.layoutReturnCandidates.visibility = View.VISIBLE
+                    binding.tvNoCandidates.visibility = View.GONE
+                }
+                is Resource.Success -> {
+                    binding.layoutReturnCandidates.visibility = View.VISIBLE
+                    returnCandidatesAdapter.submitList(result.data)
+                    binding.tvNoCandidates.visibility =
+                        if (result.data.isEmpty()) View.VISIBLE else View.GONE
+                }
+                is Resource.Error -> {
+                    binding.layoutReturnCandidates.visibility = View.VISIBLE
+                    binding.tvNoCandidates.visibility = View.VISIBLE
+                    binding.tvNoCandidates.text = result.message
+                    returnCandidatesAdapter.submitList(emptyList())
+                }
+            }
+        }
     }
 
     private fun setupModeButtons() {
@@ -183,8 +225,8 @@ class ScanFragment : Fragment() {
             val app = requireActivity().application as MobileLibApp
             val teacherId = app.sessionManager.getUserId()
 
-            viewModel.assignBook(
-                qrCode = lastScannedCode,
+            viewModel.assignByAccession(
+                accessionNumber = lastScannedCode,
                 studentId = student.studentId,
                 teacherId = teacherId
             )
@@ -233,6 +275,24 @@ class ScanFragment : Fragment() {
             }
         }
 
+        // ISBN lookup result (return mode) — teacher scanned the
+        // barcode on the book's back cover
+        viewModel.isbnLookup.observe(viewLifecycleOwner) { result ->
+            when (result) {
+                null -> { /* initial state */ }
+                is Resource.Loading -> {
+                    binding.tvScanHint.text = "Looking up ISBN..."
+                }
+                is Resource.Success -> {
+                    showIsbnBookInfo(result.data)
+                }
+                is Resource.Error -> {
+                    binding.tvScanHint.text = result.message
+                    isScanning = true
+                }
+            }
+        }
+
         // Assign/return result
         viewModel.actionResult.observe(viewLifecycleOwner) { result ->
             when (result) {
@@ -258,6 +318,7 @@ class ScanFragment : Fragment() {
     private fun showBookInfo(book: com.arnold.mobileLib.data.model.BookCopy) {
         // Show the book info card
         binding.scrollBookInfo.visibility = View.VISIBLE
+        binding.layoutReturnCandidates.visibility = View.GONE
         binding.tvBookTitle.text =
             book.bookDetails?.titleName ?: "Unknown Title"
         binding.tvBookSubject.text =
@@ -328,6 +389,30 @@ class ScanFragment : Fragment() {
         }
     }
 
+    // ISBN scan during return — shows the title and loads the table
+    // of students in the teacher's stream currently holding a copy
+    private fun showIsbnBookInfo(details: com.arnold.mobileLib.data.model.BookDetails) {
+        binding.scrollBookInfo.visibility = View.VISIBLE
+        binding.tvBookTitle.text = details.titleName
+        binding.tvBookSubject.text = details.subject
+        binding.tvBookStatus.text = "SCAN RESULT"
+        binding.tvBookStatus.setTextColor(
+            android.graphics.Color.parseColor("#2B6CB0")
+        )
+        binding.tvBookStatus.setBackgroundColor(
+            android.graphics.Color.parseColor("#EBF8FF")
+        )
+
+        binding.layoutHolder.visibility = View.GONE
+        binding.layoutStudentPicker.visibility = View.GONE
+        binding.btnAssign.visibility = View.GONE
+        binding.btnReturn.visibility = View.GONE
+
+        val app = requireActivity().application as MobileLibApp
+        val streamId = app.sessionManager.getStreamId() ?: return
+        viewModel.loadReturnCandidatesByIsbn(lastScannedIsbn, streamId)
+    }
+
     private fun showResult(message: String, success: Boolean) {
         binding.tvScanResult.text = message
         binding.tvScanResult.visibility = View.VISIBLE
@@ -343,11 +428,13 @@ class ScanFragment : Fragment() {
 
     private fun resetScan() {
         lastScannedCode = ""
+        lastScannedIsbn = ""
         selectedStudent = null
         isScanning = true
         binding.scrollBookInfo.visibility = View.GONE
         binding.layoutHolder.visibility = View.GONE
         binding.layoutStudentPicker.visibility = View.GONE
+        binding.layoutReturnCandidates.visibility = View.GONE
         binding.btnAssign.visibility = View.GONE
         binding.btnReturn.visibility = View.GONE
         binding.tvScanResult.visibility = View.GONE
@@ -432,20 +519,36 @@ class ScanFragment : Fragment() {
         val scanner = BarcodeScanning.getClient()
         scanner.process(image)
             .addOnSuccessListener { barcodes ->
-                for (barcode in barcodes) {
+                val found = barcodes.firstOrNull { barcode ->
                     val value = barcode.rawValue
-                    if (!value.isNullOrBlank() &&
-                        barcode.format == Barcode.FORMAT_CODE_128
-                    ) {
-                        // Barcode found — pause scanning
-                        isScanning = false
-                        lastScannedCode = value
+                    if (value.isNullOrBlank()) return@firstOrNull false
 
-                        // Look up the book on the main thread
-                        requireActivity().runOnUiThread {
-                            viewModel.lookupBook(value)
+                    // Accept EAN-13 (ISBN printed on book back covers)
+                    val isIsbn = barcode.format == Barcode.FORMAT_EAN_13
+                    // Accept our accession number format ACC-X-XXXX
+                    val isAccession = value.startsWith("ACC-")
+
+                    isIsbn || isAccession
+                }
+
+                if (found != null) {
+                    // Barcode found — pause scanning
+                    isScanning = false
+                    val value = found.rawValue!!
+                    val isIsbn = found.format == Barcode.FORMAT_EAN_13
+
+                    requireActivity().runOnUiThread {
+                        if (isIsbn && !isAssignMode) {
+                            // ISBN scan in return mode
+                            lastScannedIsbn = value
+                            binding.tvScanHint.text = "ISBN: $value — loading..."
+                            viewModel.lookupByIsbn(value)
+                        } else {
+                            // Accession number — direct copy lookup
+                            lastScannedCode = value
+                            binding.tvScanHint.text = "Looking up: $value"
+                            viewModel.lookupByAccession(value)
                         }
-                        break
                     }
                 }
             }

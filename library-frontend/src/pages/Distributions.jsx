@@ -58,6 +58,10 @@ export default function Distributions() {
   const [activeDistributions, setActiveDistributions] = useState([]);
   const [loadingActive, setLoadingActive] = useState(false);
 
+  // ── RETURN CANDIDATES (ISBN scan during return) ───────
+  const [returnCandidates, setReturnCandidates] = useState([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+
   
 
   // ── RECENT ACTIVITY ───────────────────────────────────
@@ -176,10 +180,32 @@ export default function Distributions() {
     setScannedBook(null);
     setScanError('');
     setActiveDistribution(null);
+    setReturnCandidates([]);
     setSelectedStudent(null);
     setStudentSearch('');
     setError('');
     setSuccess('');
+  };
+
+  // ── LOAD RETURN CANDIDATES BY ISBN ────────────────────
+  // Called after an ISBN scan during return — shows every
+  // student currently holding a copy of that title so the
+  // librarian can tick off the one returning it.
+  const loadReturnCandidatesByIsbn = async (isbn) => {
+    setLoadingCandidates(true);
+    try {
+      const year = new Date().getFullYear();
+      const distRes = await distributionService.getByYear(year);
+      const candidates = distRes.data.filter(d =>
+        d.bookCopy?.bookDetails?.isbn === isbn &&
+        d.status === 'DISTRIBUTED'
+      );
+      setReturnCandidates(candidates);
+    } catch {
+      setReturnCandidates([]);
+    } finally {
+      setLoadingCandidates(false);
+    }
   };
 
   // ── HANDLE SCAN / LOOKUP ──────────────────────────────
@@ -196,46 +222,63 @@ export default function Distributions() {
     setScanError('');
     setScannedBook(null);
     setActiveDistribution(null);
+    setReturnCandidates([]);
+
+    // Detect if the scanned/typed value is an ISBN (10 or 13 digits)
+    // vs an accession number written inside the book cover
+    const cleanCode = code.replace(/-/g, '');
+    const isIsbn = /^[0-9]{10}$|^[0-9]{13}$/.test(cleanCode);
 
     try {
-      // Look up the book by barcode
-      const res = await bookService.scanByQr(code);
-      const book = res.data;
-      setScannedBook(book);
+      if (isIsbn && mode === MODES.RETURN) {
+        // ISBN scan during return — look up the title and show
+        // the table of students in currently holding a copy
+        const res = await bookService.getByIsbn(cleanCode);
+        setScannedBook({
+          bookDetails: res.data,
+          isbn: cleanCode,
+          isIsbnLookup: true,
+        });
+        await loadReturnCandidatesByIsbn(cleanCode);
 
-      // For return and loss modes — find who currently has it
-      if (mode === MODES.RETURN || mode === MODES.LOSS) {
-        if (book.status !== 'DISTRIBUTED') {
-          setScanError(
-            `This book is ${book.status.toLowerCase()}, not currently distributed.`
-          );
-        } else {
-          // Find the active distribution record
-          const distRes = await distributionService.getByYear(
-            new Date().getFullYear()
-          );
-          const activeDist = distRes.data.find(
-            d => d.bookCopy?.qrCode === code &&
-                 d.status === 'DISTRIBUTED'
-          );
-          setActiveDistribution(activeDist || null);
+      } else {
+        // Accession number entry — look up the specific copy
+        const res = await bookService.getByAccession(code);
+        setScannedBook(res.data);
+
+        if (mode === MODES.RETURN) {
+          if (res.data.status !== 'DISTRIBUTED') {
+            setScanError(
+              `This copy is ${res.data.status.toLowerCase()}, not currently distributed.`
+            );
+          } else {
+            const distRes = await distributionService.getByYear(
+              new Date().getFullYear()
+            );
+            const activeDist = distRes.data.find(
+              d => d.bookCopy?.qrCode === res.data.qrCode &&
+                   d.status === 'DISTRIBUTED'
+            );
+            setActiveDistribution(activeDist || null);
+          }
         }
-      }
 
-      // For assign mode — check book is available
-      if (mode === MODES.ASSIGN && book.status !== 'AVAILABLE') {
-        setScanError(
-          `This book is currently ${book.status.toLowerCase()}. It must be AVAILABLE to assign.`
-        );
+        if (mode === MODES.ASSIGN && res.data.status !== 'AVAILABLE') {
+          setScanError(
+            `This copy is ${res.data.status.toLowerCase()}. Only AVAILABLE copies can be assigned.`
+          );
+        }
       }
 
     } catch (err) {
       if (err.response?.status === 404) {
         setScanError(
-          'No book found with this barcode. Check the barcode and try again.'
+          isIsbn
+            ? 'No book registered with this ISBN. Ask the librarian to register it.'
+            : 'No book found with this accession number. Check the number written inside the book.'
         );
       } else {
-        setScanError('Failed to look up book.');
+        setScanError('Failed to look up book. Is the server running?');
       }
     } finally {
       setScanLoading(false);
@@ -252,13 +295,13 @@ export default function Distributions() {
     try {
       const studentId = selectedStudent.studentId || selectedStudent.id;
       const requestData = {
-        qrCode: scannedBook.qrCode,
+        accessionNumber: scannedBook.accessionNumber || scannedBook.qrCode,
         studentId: studentId,
         academicYear: new Date().getFullYear(),
         teacherId: user.userId,
       };
       console.log('Assigning book with data:', requestData);
-      await distributionService.distribute(requestData);
+      await distributionService.distributeByAccession(requestData);
 
       showSuccess(
         `✅ "${scannedBook.bookDetails?.titleName}" assigned to ${selectedStudent.fullName}`
@@ -301,6 +344,26 @@ export default function Distributions() {
 
     } catch (err) {
       setError(err.response?.data || 'Failed to process return');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── RETURN BOOK BY RECORD (ISBN return candidates table) ──
+  const handleReturnByRecord = async (record) => {
+    setSubmitting(true);
+    setError('');
+
+    try {
+      await distributionService.returnBook(record.bookCopy?.qrCode);
+
+      showSuccess(`✅ Book returned by ${record.student?.fullName}`);
+      setReturnCandidates(prev =>
+        prev.filter(r => r.bookCopy?.bookId !== record.bookCopy?.bookId)
+      );
+      loadRecentActivity();
+    } catch (err) {
+      setError(err.response?.data || 'Failed to return');
     } finally {
       setSubmitting(false);
     }
@@ -603,22 +666,31 @@ export default function Distributions() {
           <div style={styles.scanSection}>
             <div style={styles.scanLabel}>
               {mode === MODES.ASSIGN
-                ? '📦 Scan book to assign'
+                ? '📦 Enter accession number to assign'
                 : mode === MODES.RETURN
-                ? '↩️ Scan book to return'
+                ? '↩️ Scan ISBN barcode to return'
                 : '⚠️ Scan book to mark as lost'}
             </div>
 
             <div style={styles.scanHint}>
-              Connect a USB barcode scanner and click below,
-              then scan the book. Or type the barcode manually.
+              {mode === MODES.ASSIGN
+                ? 'Type the number written inside the book cover, then press Enter or click Look Up.'
+                : mode === MODES.RETURN
+                ? 'Scan the ISBN barcode on the back cover of the book being returned, or type the accession number.'
+                : 'Connect a USB barcode scanner and click below, then scan the book.'}
             </div>
 
             <div style={styles.scanInputWrap}>
               <input
                 ref={scanInputRef}
                 style={styles.scanInput}
-                placeholder="Click here, then scan barcode..."
+                placeholder={
+                  mode === MODES.ASSIGN
+                    ? 'Type accession number from inside book cover...'
+                    : mode === MODES.RETURN
+                    ? 'Scan ISBN barcode, or type accession number...'
+                    : 'Click here, then scan barcode...'
+                }
                 value={barcodeInput}
                 onChange={e => setBarcodeInput(e.target.value)}
                 onKeyDown={handleScan}
@@ -681,35 +753,42 @@ export default function Distributions() {
               </div>
 
               <div style={styles.bookInfoRow}>
-                <span style={styles.bookInfoLabel}>Barcode</span>
+                <span style={styles.bookInfoLabel}>
+                  {scannedBook.isIsbnLookup ? 'ISBN' : 'Accession No.'}
+                </span>
                 <span style={{
                   ...styles.bookInfoValue,
                   fontFamily: 'monospace',
                   fontSize: 12,
                 }}>
-                  {scannedBook.qrCode}
+                  {scannedBook.isIsbnLookup
+                    ? scannedBook.isbn
+                    : (scannedBook.accessionNumber || scannedBook.qrCode)}
                 </span>
               </div>
 
-              <div style={styles.bookInfoRow}>
-                <span style={styles.bookInfoLabel}>Status</span>
-                <span style={{
-                  padding: '2px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  ...(statusColor[scannedBook.status] || {
-                    bg: '#f0f2f5', color: '#666',
-                  }),
-                  background: statusColor[scannedBook.status]?.bg,
-                  color: statusColor[scannedBook.status]?.color,
-                }}>
-                  {scannedBook.status}
-                </span>
-              </div>
+              {!scannedBook.isIsbnLookup && (
+                <div style={styles.bookInfoRow}>
+                  <span style={styles.bookInfoLabel}>Status</span>
+                  <span style={{
+                    padding: '2px 10px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    ...(statusColor[scannedBook.status] || {
+                      bg: '#f0f2f5', color: '#666',
+                    }),
+                    background: statusColor[scannedBook.status]?.bg,
+                    color: statusColor[scannedBook.status]?.color,
+                  }}>
+                    {scannedBook.status}
+                  </span>
+                </div>
+              )}
 
-              {/* Current holder info for return/loss */}
-              {(mode === MODES.RETURN || mode === MODES.LOSS)
+              {/* Current holder info for return */}
+              {mode === MODES.RETURN
+                && !scannedBook.isIsbnLookup
                 && activeDistribution && (
                 <div style={styles.holderInfo}>
                   <div style={styles.holderLabel}>
@@ -723,6 +802,43 @@ export default function Distributions() {
                     {' • '}Distributed:{' '}
                     {activeDistribution.dateDistributed}
                   </div>
+                </div>
+              )}
+
+              {/* Return candidates table — ISBN scan in return mode */}
+              {mode === MODES.RETURN && scannedBook.isIsbnLookup && (
+                <div style={styles.returnTable}>
+                  <div style={styles.returnTableHeader}>
+                    Students with this book — click Return to confirm
+                  </div>
+                  {loadingCandidates ? (
+                    <div style={styles.loadingText}>Loading...</div>
+                  ) : returnCandidates.length === 0 ? (
+                    <div style={styles.loadingText}>
+                      No active distributions found for this title
+                    </div>
+                  ) : (
+                    returnCandidates.map((record, i) => (
+                      <div key={i} style={styles.returnRow}>
+                        <div style={styles.returnStudentInfo}>
+                          <div style={styles.returnStudentName}>
+                            {record.student?.fullName}
+                          </div>
+                          <div style={styles.returnStudentMeta}>
+                            {record.student?.admissionNumber}
+                            {' • '}Issued: {record.dateDistributed}
+                          </div>
+                        </div>
+                        <button
+                          style={styles.returnTickBtn}
+                          onClick={() => handleReturnByRecord(record)}
+                          disabled={submitting}
+                        >
+                          ✓ Return
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
 
@@ -745,7 +861,7 @@ export default function Distributions() {
                   </button>
                 )}
 
-                {mode === MODES.RETURN && (
+                {mode === MODES.RETURN && !scannedBook.isIsbnLookup && (
                   <button
                     style={{
                       ...styles.returnBtn,
@@ -1133,6 +1249,49 @@ const styles = {
   },
   holderMeta: {
     fontSize: 11, color: '#888', marginTop: 2,
+  },
+  returnTable: {
+    marginTop: 14,
+    border: '1.5px solid #e0e0e0',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  returnTableHeader: {
+    background: '#f7fafc',
+    padding: '8px 14px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#555',
+    borderBottom: '1px solid #e0e0e0',
+  },
+  returnRow: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '10px 14px',
+    borderBottom: '1px solid #f0f2f5',
+    gap: 10,
+  },
+  returnStudentInfo: { flex: 1 },
+  returnStudentName: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#1a1a2e',
+  },
+  returnStudentMeta: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
+  },
+  returnTickBtn: {
+    padding: '6px 14px',
+    background: '#2b6cb0',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   actionButtons: {
     display: 'flex', flexDirection: 'column',
