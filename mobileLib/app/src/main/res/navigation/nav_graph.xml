@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.arnold.mobileLib.ui.home.HomeFragment"
+        android:label="Home"/>
+
+    <fragment
+        android:id="@+id/studentsFragment"
+        android:name="com.arnold.mobileLib.ui.students.StudentsFragment"
+        android:label="Students"/>
+
+    <fragment
+        android:id="@+id/scanFragment"
+        android:name="com.arnold.mobileLib.ui.scan.ScanFragment"
+        android:label="Scan"/>
+
+    <fragment
+        android:id="@+id/distributionsFragment"
+        android:name="com.arnold.mobileLib.ui.distributions.DistributionsFragment"
+        android:label="Books Out"/>
+
+</navigation>

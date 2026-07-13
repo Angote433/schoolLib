@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F0F2F5">
+
+    <!-- Mode selector tabs -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#1A1A2E"
+        android:padding="12dp"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/btnModeAssign"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="📦 Assign"
+            android:textSize="13sp"
+            android:backgroundTint="#FFFFFF"
+            android:textColor="#1A1A2E"/>
+
+        <Button
+            android:id="@+id/btnModeReturn"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="↩ Return"
+            android:textSize="13sp"
+            android:backgroundTint="#33FFFFFF"
+            android:textColor="#FFFFFF"/>
+
+    </LinearLayout>
+
+    <!-- Camera preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/cameraPreview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- Scan overlay hint -->
+    <TextView
+        android:id="@+id/tvScanHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Point camera at book barcode"
+        android:textSize="13sp"
+        android:textColor="#FFFFFF"
+        android:background="#CC000000"
+        android:padding="8dp"
+        android:gravity="center"/>
+
+    <!-- Book info card — shown after scan -->
+    <ScrollView
+        android:id="@+id/scrollBookInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp">
+
+            <!-- Book details -->
+            <TextView
+                android:id="@+id/tvBookTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Book Title"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A2E"/>
+
+            <TextView
+                android:id="@+id/tvBookSubject"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Subject"
+                android:textSize="13sp"
+                android:textColor="#666666"
+                android:layout_marginTop="2dp"/>
+
+            <TextView
+                android:id="@+id/tvBookStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AVAILABLE"
+                android:textSize="12sp"
+                android:textColor="#276749"
+                android:background="#F0FFF4"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:layout_marginTop="6dp"/>
+
+            <!-- Current holder (return mode) -->
+            <LinearLayout
+                android:id="@+id/layoutHolder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#FFFFF0"
+                android:padding="10dp"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CURRENTLY HELD BY"
+                    android:textSize="10sp"
+                    android:textColor="#744210"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/tvHolderName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Student Name"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A1A2E"
+                    android:layout_marginTop="2dp"/>
+
+            </LinearLayout>
+
+            <!-- Student picker (assign mode) -->
+            <LinearLayout
+                android:id="@+id/layoutStudentPicker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Select Student"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#333333"
+                    android:layout_marginBottom="6dp"/>
+
+                <EditText
+                    android:id="@+id/etStudentSearch"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:hint="Search student..."
+                    android:background="@drawable/input_background"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textSize="14sp"
+                    android:inputType="text"
+                    android:imeOptions="actionSearch"
+                    android:singleLine="true"
+                    android:layout_marginBottom="6dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerStudentPicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:background="#F9FAFB"/>
+
+            </LinearLayout>
+
+            <!-- Action buttons -->
+            <Button
+                android:id="@+id/btnAssign"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Assign Book"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="#276749"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"/>
+
+            <Button
+                android:id="@+id/btnReturn"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="↩ Confirm Return"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="#2B6CB0"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"/>
+
+            <Button
+                android:id="@+id/btnScanAgain"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="Scan Another Book"
+                android:textSize="13sp"
+                android:backgroundTint="#F0F2F5"
+                android:textColor="#333333"
+                android:layout_marginTop="8dp"/>
+
+            <!-- Error/result message -->
+            <TextView
+                android:id="@+id/tvScanResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:padding="10dp"
+                android:visibility="gone"
+                android:layout_marginTop="8dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

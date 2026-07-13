@@ -1,0 +1,25 @@
+# Backend
+autolibrary/target/
+autolibrary/.mvn/
+*.class
+*.jar
+!*-sources.jar
+
+# Frontend
+library-frontend/node_modules/
+library-frontend/build/
+library-frontend/.env
+
+# Mobile
+mobileLib/.gradle/
+mobileLib/build/
+mobileLib/app/build/
+mobileLib/local.properties
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
