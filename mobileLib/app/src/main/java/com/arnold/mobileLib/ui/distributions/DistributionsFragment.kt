@@ -14,12 +14,23 @@ import com.google.android.material.snackbar.Snackbar
 
 class DistributionsFragment : Fragment() {
 
+    companion object {
+        // Optional args — when present, the list is filtered down to
+        // one student's currently held books instead of the whole
+        // stream. Set by StudentsFragment when a teacher taps a
+        // student to see what they're holding.
+        const val ARG_STUDENT_ID = "arg_student_id"
+        const val ARG_STUDENT_NAME = "arg_student_name"
+    }
+
     private var _binding: FragmentDistributionsBinding? = null
     private val binding get() = _binding!!
     private val viewModel: DistributionsViewModel by viewModels()
     private lateinit var adapter: DistributionsAdapter
     private var streamId: Int = -1
     private var teacherId: Int = -1
+    private var filterStudentId: Int = -1
+    private var filterStudentName: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,15 +54,32 @@ class DistributionsFragment : Fragment() {
         streamId = session.getStreamId() ?: -1
         teacherId = session.getUserId()
 
-        binding.tvDistStreamLabel.text =
-            "Stream ${session.getStreamName() ?: "—"} — " +
-                    "Academic Year ${java.util.Calendar.getInstance()
-                        .get(java.util.Calendar.YEAR)}"
+        filterStudentId = arguments?.getInt(ARG_STUDENT_ID, -1) ?: -1
+        filterStudentName = arguments?.getString(ARG_STUDENT_NAME)
+
+        if (filterStudentId != -1) {
+            binding.tvDistTitle.text = filterStudentName ?: "Student's Books"
+            binding.tvDistStreamLabel.text = "Books currently held by this student"
+        } else {
+            binding.tvDistTitle.text = "Books Out"
+            binding.tvDistStreamLabel.text =
+                "Stream ${session.getStreamName() ?: "—"} — " +
+                        "Academic Year ${java.util.Calendar.getInstance()
+                            .get(java.util.Calendar.YEAR)}"
+        }
 
         setupRecyclerView()
         observeViewModel()
         setupClickListeners()
+    }
 
+    override fun onResume() {
+        super.onResume()
+        // Loads on first appearance too (onResume always follows
+        // onViewCreated), and again every time this screen becomes
+        // visible after that — so the list reflects books
+        // assigned/returned/flagged on other tabs without a manual
+        // refresh tap.
         if (streamId != -1) {
             viewModel.loadDistributions(streamId)
         }
@@ -114,20 +142,33 @@ class DistributionsFragment : Fragment() {
                 }
                 is Resource.Success -> {
                     binding.progressBarDist.visibility = View.GONE
-                    val list = result.data
+                    val list = if (filterStudentId != -1) {
+                        result.data.filter { it.student?.studentId == filterStudentId }
+                    } else {
+                        result.data
+                    }
                     if (list.isEmpty()) {
                         binding.recyclerDistributions.visibility =
                             View.GONE
                         binding.emptyStateDist.visibility = View.VISIBLE
                         binding.tvDistCount.text = "No books currently out"
+                        if (filterStudentId != -1) {
+                            binding.tvEmptyDistTitle.text = "No books held ✅"
+                            binding.tvEmptyDistSub.text =
+                                "${filterStudentName ?: "This student"} does not currently have any books checked out"
+                        } else {
+                            binding.tvEmptyDistTitle.text = "All books returned ✅"
+                            binding.tvEmptyDistSub.text =
+                                "No books are currently checked out to students in your stream"
+                        }
                     } else {
                         binding.recyclerDistributions.visibility =
                             View.VISIBLE
                         binding.emptyStateDist.visibility = View.GONE
                         binding.tvDistCount.text =
                             "${list.size} book" +
-                                    if (list.size == 1) "" else "s" +
-                                            " currently distributed"
+                                    (if (list.size == 1) "" else "s") +
+                                    " currently distributed"
                         adapter.submitList(list)
                     }
                 }

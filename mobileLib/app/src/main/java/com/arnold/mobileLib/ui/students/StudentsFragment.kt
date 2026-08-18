@@ -7,13 +7,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arnold.mobileLib.R
 import com.arnold.mobileLib.MobileLibApp
 import com.arnold.mobileLib.databinding.DialogAddStudentBinding
 import com.arnold.mobileLib.databinding.FragmentStudentsBinding
+import com.arnold.mobileLib.ui.distributions.DistributionsFragment
 import com.arnold.mobileLib.util.Resource
 import java.util.Calendar
 
@@ -64,6 +67,17 @@ class StudentsFragment : Fragment() {
         binding.recyclerStudents.layoutManager =
             LinearLayoutManager(requireContext())
         binding.recyclerStudents.adapter = adapter
+
+        // Tap a student to see the books currently checked out to them
+        adapter.setOnItemClickListener { student ->
+            findNavController().navigate(
+                R.id.distributionsFragment,
+                bundleOf(
+                    DistributionsFragment.ARG_STUDENT_ID to student.studentId,
+                    DistributionsFragment.ARG_STUDENT_NAME to student.fullName
+                )
+            )
+        }
     }
 
     private fun setupSearch() {
@@ -82,6 +96,12 @@ class StudentsFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.btnAddStudent.setOnClickListener {
+            showAddStudentDialog()
+        }
+        // Same dialog, reachable directly from the empty state so a
+        // teacher with no students yet doesn't have to hunt for the
+        // small header button.
+        binding.btnAddStudentEmpty.setOnClickListener {
             showAddStudentDialog()
         }
     }

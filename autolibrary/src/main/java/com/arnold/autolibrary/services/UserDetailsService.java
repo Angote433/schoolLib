@@ -76,6 +76,7 @@ public class UserDetailsService {
         return userDetailsRepo.save(user);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public UserDetails assignStream(int userId,int streamId){
         UserDetails user = userDetailsRepo.findById(userId).orElseThrow(
                 ()->new RuntimeException("User not found")
@@ -89,7 +90,25 @@ public class UserDetailsService {
                 ()->new RuntimeException("Stream not found with id"+ streamId)
         );
 
+        //teacher already managing a different stream?
+        streamRepo.findByTeacher(user).ifPresent(existingStream -> {
+            if(existingStream.getStreamId() != streamId){
+                throw new RuntimeException("Teacher manages another stream "+ existingStream.getStreamName());
+            }
+        });
+
+        //clear the previous teacher of this stream (if being reassigned)
+        UserDetails previousTeacher = stream.getTeacher();
+        if(previousTeacher != null && previousTeacher.getUserId() != userId){
+            previousTeacher.setStream(null);
+            userDetailsRepo.save(previousTeacher);
+        }
+
+        //keep both sides of the relationship in sync
         user.setStream(stream);
+        stream.setTeacher(user);
+        streamRepo.save(stream);
+
         return userDetailsRepo.save(user);
     }
 }

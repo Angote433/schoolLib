@@ -1,76 +1,238 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F0F2F5">
+    android:background="@color/surface">
 
-    <!-- Mode selector tabs -->
+    <!-- Mode selector — two large pill buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#1A1A2E"
-        android:padding="12dp"
+        android:background="@color/card"
+        android:elevation="4dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
         android:weightSum="2">
 
         <Button
             android:id="@+id/btnModeAssign"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
+            android:layout_marginEnd="6dp"
             android:text="📦 Assign"
             android:textSize="13sp"
-            android:backgroundTint="#FFFFFF"
-            android:textColor="#1A1A2E"/>
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/primary"
+            android:textColor="@color/text_inverse"
+            app:cornerRadius="24dp"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="1.5dp"/>
 
         <Button
             android:id="@+id/btnModeReturn"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="6dp"
             android:text="↩ Return"
             android:textSize="13sp"
-            android:backgroundTint="#33FFFFFF"
-            android:textColor="#FFFFFF"/>
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/card"
+            android:textColor="@color/primary"
+            app:cornerRadius="24dp"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="1.5dp"/>
 
     </LinearLayout>
 
-    <!-- Camera preview -->
-    <androidx.camera.view.PreviewView
-        android:id="@+id/cameraPreview"
+    <!-- Camera preview + scan guide overlay — takes up most of the screen -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1">
 
-    <!-- Scan overlay hint -->
+        <androidx.camera.view.PreviewView
+            android:id="@+id/cameraPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <!-- Dark vignette on the edges with a transparent scan window
+             in the center — built from four dim strips around a
+             guideline-bounded gap, no custom drawing code needed. -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false">
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/glScanTop"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintGuide_percent="0.26"/>
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/glScanBottom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintGuide_percent="0.72"/>
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/glScanStart"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.10"/>
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/glScanEnd"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.90"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_scrim_dim"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/glScanTop"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_scrim_dim"
+                app:layout_constraintTop_toBottomOf="@id/glScanBottom"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_scrim_dim"
+                app:layout_constraintTop_toTopOf="@id/glScanTop"
+                app:layout_constraintBottom_toBottomOf="@id/glScanBottom"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="@id/glScanStart"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bg_scrim_dim"
+                app:layout_constraintTop_toTopOf="@id/glScanTop"
+                app:layout_constraintBottom_toBottomOf="@id/glScanBottom"
+                app:layout_constraintStart_toStartOf="@id/glScanEnd"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <!-- Pulsing scan window border -->
+            <View
+                android:id="@+id/scanGuideFrame"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/scan_guide_frame"
+                app:layout_constraintTop_toTopOf="@id/glScanTop"
+                app:layout_constraintBottom_toBottomOf="@id/glScanBottom"
+                app:layout_constraintStart_toStartOf="@id/glScanStart"
+                app:layout_constraintEnd_toEndOf="@id/glScanEnd"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </FrameLayout>
+
+    <!-- Scan/mode status hint -->
     <TextView
         android:id="@+id/tvScanHint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Point camera at book barcode"
         android:textSize="13sp"
-        android:textColor="#FFFFFF"
-        android:background="#CC000000"
-        android:padding="8dp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:textColor="@color/text_inverse"
+        android:background="#CC162038"
+        android:padding="12dp"
         android:gravity="center"/>
 
-    <!-- Book info card — shown after scan -->
+    <!-- Manual entry fallback — for when the camera can't read
+         a damaged/smudged barcode, or is unavailable -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/card"
+        android:padding="10dp">
+
+        <EditText
+            android:id="@+id/etManualCode"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:hint="Or type accession/ISBN number..."
+            android:background="@drawable/input_background"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textSize="13sp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted"
+            android:inputType="textCapCharacters"
+            android:imeOptions="actionDone"
+            android:singleLine="true"/>
+
+        <Button
+            android:id="@+id/btnManualLookup"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginStart="8dp"
+            android:text="Look Up"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            android:backgroundTint="@color/primary"
+            android:textColor="@color/text_inverse"
+            app:cornerRadius="10dp"/>
+
+    </LinearLayout>
+
+    <!-- Book info card — bottom-sheet style, shown after scan -->
     <ScrollView
         android:id="@+id/scrollBookInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:maxHeight="420dp"
         android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#FFFFFF"
-            android:padding="16dp">
+            android:background="@drawable/bg_bottom_sheet"
+            android:elevation="12dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="20dp">
+
+            <!-- Drag handle indicator -->
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_handle_bar"
+                android:layout_marginBottom="14dp"/>
 
             <!-- Book details -->
             <TextView
@@ -78,9 +240,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Book Title"
-                android:textSize="16sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                android:textColor="#1A1A2E"/>
+                android:textColor="@color/text_primary"/>
 
             <TextView
                 android:id="@+id/tvBookSubject"
@@ -88,7 +250,7 @@
                 android:layout_height="wrap_content"
                 android:text="Subject"
                 android:textSize="13sp"
-                android:textColor="#666666"
+                android:textColor="@color/text_muted"
                 android:layout_marginTop="2dp"/>
 
             <TextView
@@ -96,14 +258,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="AVAILABLE"
-                android:textSize="12sp"
-                android:textColor="#276749"
-                android:background="#F0FFF4"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:layout_marginTop="6dp"/>
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/success"
+                android:background="@drawable/bg_badge_pill"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"/>
 
             <!-- Current holder (return mode) -->
             <LinearLayout
@@ -111,9 +274,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFF0"
-                android:padding="10dp"
-                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_holder_card"
+                android:padding="12dp"
+                android:layout_marginTop="10dp"
                 android:visibility="gone">
 
                 <TextView
@@ -121,7 +284,8 @@
                     android:layout_height="wrap_content"
                     android:text="CURRENTLY HELD BY"
                     android:textSize="10sp"
-                    android:textColor="#744210"
+                    android:letterSpacing="0.05"
+                    android:textColor="@color/warning"
                     android:textStyle="bold"/>
 
                 <TextView
@@ -131,7 +295,7 @@
                     android:text="Student Name"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:textColor="#1A1A2E"
+                    android:textColor="@color/text_primary"
                     android:layout_marginTop="2dp"/>
 
             </LinearLayout>
@@ -142,7 +306,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone">
 
                 <TextView
@@ -150,8 +314,8 @@
                     android:layout_height="wrap_content"
                     android:text="Tap ✓ Return next to the student returning this book"
                     android:textSize="12sp"
-                    android:textColor="#555555"
-                    android:layout_marginBottom="6dp"/>
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="8dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerReturnCandidates"
@@ -165,7 +329,7 @@
                     android:layout_height="wrap_content"
                     android:text="No students in your stream have this book assigned"
                     android:textSize="13sp"
-                    android:textColor="#888888"
+                    android:textColor="@color/text_muted"
                     android:gravity="center"
                     android:padding="16dp"
                     android:visibility="gone"/>
@@ -178,7 +342,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone">
 
                 <TextView
@@ -187,28 +351,31 @@
                     android:text="Select Student"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:textColor="#333333"
-                    android:layout_marginBottom="6dp"/>
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="8dp"/>
 
                 <EditText
                     android:id="@+id/etStudentSearch"
                     android:layout_width="match_parent"
-                    android:layout_height="44dp"
+                    android:layout_height="46dp"
                     android:hint="Search student..."
                     android:background="@drawable/input_background"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
                     android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_muted"
                     android:inputType="text"
                     android:imeOptions="actionSearch"
                     android:singleLine="true"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerStudentPicker"
                     android:layout_width="match_parent"
                     android:layout_height="180dp"
-                    android:background="#F9FAFB"/>
+                    android:background="@color/surface"
+                    android:nestedScrollingEnabled="false"/>
 
             </LinearLayout>
 
@@ -216,35 +383,41 @@
             <Button
                 android:id="@+id/btnAssign"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="50dp"
                 android:text="Assign Book"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:backgroundTint="#276749"
-                android:textColor="#FFFFFF"
-                android:layout_marginTop="12dp"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/success"
+                android:textColor="@color/text_inverse"
+                app:cornerRadius="10dp"
+                android:layout_marginTop="14dp"
                 android:visibility="gone"/>
 
             <Button
                 android:id="@+id/btnReturn"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="50dp"
                 android:text="↩ Confirm Return"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:backgroundTint="#2B6CB0"
-                android:textColor="#FFFFFF"
-                android:layout_marginTop="12dp"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/info"
+                android:textColor="@color/text_inverse"
+                app:cornerRadius="10dp"
+                android:layout_marginTop="14dp"
                 android:visibility="gone"/>
 
             <Button
                 android:id="@+id/btnScanAgain"
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
+                android:layout_height="46dp"
                 android:text="Scan Another Book"
                 android:textSize="13sp"
-                android:backgroundTint="#F0F2F5"
-                android:textColor="#333333"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/surface"
+                android:textColor="@color/text_secondary"
+                app:cornerRadius="10dp"
                 android:layout_marginTop="8dp"/>
 
             <!-- Error/result message -->
@@ -254,9 +427,11 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textSize="13sp"
-                android:padding="10dp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_message_box"
+                android:padding="12dp"
                 android:visibility="gone"
-                android:layout_marginTop="8dp"/>
+                android:layout_marginTop="10dp"/>
 
         </LinearLayout>
     </ScrollView>

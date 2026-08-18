@@ -1,7 +1,10 @@
 package com.arnold.mobileLib.ui.scan
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.pm.PackageManager
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -50,6 +53,10 @@ class ScanFragment : Fragment() {
     // Camera
     private lateinit var cameraExecutor: ExecutorService
     private var isScanning = true  // paused after a successful scan
+    private val barcodeScanner by lazy { BarcodeScanning.getClient() }
+
+    // Purely decorative pulse on the scan guide frame — visual only
+    private var scanGuidePulse: ObjectAnimator? = null
 
     // Student picker adapter (reuse StudentsAdapter)
     private lateinit var studentPickerAdapter:
@@ -93,6 +100,20 @@ class ScanFragment : Fragment() {
         setupClickListeners()
         observeViewModel()
         requestCameraPermission()
+        startScanGuidePulse()
+    }
+
+    // Gentle alpha pulse on the scan window border so it reads as "live"
+    // — purely decorative, no effect on scanning behaviour.
+    private fun startScanGuidePulse() {
+        scanGuidePulse = ObjectAnimator.ofFloat(
+            binding.scanGuideFrame, View.ALPHA, 1f, 0.35f
+        ).apply {
+            duration = 900
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            start()
+        }
     }
 
     private fun setupReturnCandidates() {
@@ -146,40 +167,29 @@ class ScanFragment : Fragment() {
     }
 
     private fun updateModeUI() {
+        val context = requireContext()
+        val primary = ContextCompat.getColor(context, R.color.primary)
+        val card = ContextCompat.getColor(context, R.color.card)
+        val inverse = ContextCompat.getColor(context, R.color.text_inverse)
+
         if (isAssignMode) {
+            // Active pill: filled navy, white text
             binding.btnModeAssign.backgroundTintList =
-                ContextCompat.getColorStateList(
-                    requireContext(), android.R.color.white
-                )
-            binding.btnModeAssign.setTextColor(
-                ContextCompat.getColor(requireContext(),
-                    android.R.color.black)
-            )
+                android.content.res.ColorStateList.valueOf(primary)
+            binding.btnModeAssign.setTextColor(inverse)
+            // Inactive pill: white fill, navy outline + text
             binding.btnModeReturn.backgroundTintList =
-                android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#33FFFFFF")
-                )
-            binding.btnModeReturn.setTextColor(
-                android.graphics.Color.WHITE
-            )
+                android.content.res.ColorStateList.valueOf(card)
+            binding.btnModeReturn.setTextColor(primary)
             binding.tvScanHint.text =
                 "ASSIGN MODE — Scan a book to assign"
         } else {
             binding.btnModeReturn.backgroundTintList =
-                ContextCompat.getColorStateList(
-                    requireContext(), android.R.color.white
-                )
-            binding.btnModeReturn.setTextColor(
-                ContextCompat.getColor(requireContext(),
-                    android.R.color.black)
-            )
+                android.content.res.ColorStateList.valueOf(primary)
+            binding.btnModeReturn.setTextColor(inverse)
             binding.btnModeAssign.backgroundTintList =
-                android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#33FFFFFF")
-                )
-            binding.btnModeAssign.setTextColor(
-                android.graphics.Color.WHITE
-            )
+                android.content.res.ColorStateList.valueOf(card)
+            binding.btnModeAssign.setTextColor(primary)
             binding.tvScanHint.text =
                 "RETURN MODE — Scan a book to return"
         }
@@ -238,6 +248,50 @@ class ScanFragment : Fragment() {
 
         binding.btnScanAgain.setOnClickListener {
             resetScan()
+        }
+
+        // Manual fallback — camera may be unavailable, or the
+        // printed/written code may be damaged or hard to scan
+        binding.btnManualLookup.setOnClickListener {
+            submitManualCode()
+        }
+        binding.etManualCode.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                submitManualCode()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    // ISBNs are 10 or 13 digits; everything else (e.g. ACC-3-0001)
+    // is treated as an accession number — same rule the web app uses.
+    private fun submitManualCode() {
+        val value = binding.etManualCode.text.toString().trim()
+        if (value.isEmpty()) return
+
+        // The keyboard stays open after a plain button tap (unlike an
+        // IME action), and would otherwise sit on top of the student
+        // picker that appears below once the book is found — making
+        // student rows untappable until the teacher dismisses it
+        // themselves. Hide it now, right when we know the field is done.
+        hideKeyboard()
+
+        isScanning = false
+        val digitsOnly = value.replace("-", "")
+        val isIsbn = digitsOnly.matches(Regex("\\d{10}|\\d{13}"))
+
+        binding.etManualCode.setText("")
+
+        if (isIsbn && !isAssignMode) {
+            lastScannedIsbn = digitsOnly
+            binding.tvScanHint.text = "ISBN: $digitsOnly — loading..."
+            viewModel.lookupByIsbn(digitsOnly)
+        } else {
+            lastScannedCode = value
+            binding.tvScanHint.text = "Looking up: $value"
+            viewModel.lookupByAccession(value)
         }
     }
 
@@ -302,9 +356,14 @@ class ScanFragment : Fragment() {
                     binding.btnReturn.isEnabled = false
                 }
                 is Resource.Success -> {
-                    binding.btnAssign.isEnabled = true
-                    binding.btnReturn.isEnabled = true
                     showResult(result.data, true)
+                    // Prevent re-tapping Assign/Return to fire a duplicate
+                    // request against the book that was just processed
+                    binding.btnAssign.visibility = View.GONE
+                    binding.btnReturn.visibility = View.GONE
+                    lastScannedCode = ""
+                    lastScannedIsbn = ""
+                    selectedStudent = null
                 }
                 is Resource.Error -> {
                     binding.btnAssign.isEnabled = true
@@ -316,6 +375,10 @@ class ScanFragment : Fragment() {
     }
 
     private fun showBookInfo(book: com.arnold.mobileLib.data.model.BookCopy) {
+        // Make sure the keyboard isn't left open covering the student
+        // picker / action buttons this reveals below.
+        hideKeyboard()
+
         // Show the book info card
         binding.scrollBookInfo.visibility = View.VISIBLE
         binding.layoutReturnCandidates.visibility = View.GONE
@@ -325,32 +388,13 @@ class ScanFragment : Fragment() {
             book.bookDetails?.subject ?: ""
         binding.tvBookStatus.text = book.status
 
-        // Color the status badge
+        // Color the status pill — recolor the existing GradientDrawable
+        // in place so the rounded badge shape is preserved (setting a
+        // plain background color would flatten it into a rectangle).
         when (book.status) {
-            "AVAILABLE" -> {
-                binding.tvBookStatus.setTextColor(
-                    android.graphics.Color.parseColor("#276749")
-                )
-                binding.tvBookStatus.setBackgroundColor(
-                    android.graphics.Color.parseColor("#F0FFF4")
-                )
-            }
-            "DISTRIBUTED" -> {
-                binding.tvBookStatus.setTextColor(
-                    android.graphics.Color.parseColor("#744210")
-                )
-                binding.tvBookStatus.setBackgroundColor(
-                    android.graphics.Color.parseColor("#FFFFF0")
-                )
-            }
-            else -> {
-                binding.tvBookStatus.setTextColor(
-                    android.graphics.Color.parseColor("#C53030")
-                )
-                binding.tvBookStatus.setBackgroundColor(
-                    android.graphics.Color.parseColor("#FFF5F5")
-                )
-            }
+            "AVAILABLE" -> setStatusPill(binding.tvBookStatus, R.color.success, R.color.success_light)
+            "DISTRIBUTED" -> setStatusPill(binding.tvBookStatus, R.color.warning, R.color.warning_light)
+            else -> setStatusPill(binding.tvBookStatus, R.color.danger, R.color.danger_light)
         }
 
         if (isAssignMode) {
@@ -360,6 +404,7 @@ class ScanFragment : Fragment() {
                     "Book is ${book.status} — cannot assign",
                     false
                 )
+                isScanning = true
                 return
             }
             // Show student picker
@@ -376,6 +421,7 @@ class ScanFragment : Fragment() {
                     "Book is ${book.status} — not currently distributed",
                     false
                 )
+                isScanning = true
                 return
             }
             binding.layoutStudentPicker.visibility = View.GONE
@@ -396,12 +442,7 @@ class ScanFragment : Fragment() {
         binding.tvBookTitle.text = details.titleName
         binding.tvBookSubject.text = details.subject
         binding.tvBookStatus.text = "SCAN RESULT"
-        binding.tvBookStatus.setTextColor(
-            android.graphics.Color.parseColor("#2B6CB0")
-        )
-        binding.tvBookStatus.setBackgroundColor(
-            android.graphics.Color.parseColor("#EBF8FF")
-        )
+        setStatusPill(binding.tvBookStatus, R.color.info, R.color.info_light)
 
         binding.layoutHolder.visibility = View.GONE
         binding.layoutStudentPicker.visibility = View.GONE
@@ -416,14 +457,34 @@ class ScanFragment : Fragment() {
     private fun showResult(message: String, success: Boolean) {
         binding.tvScanResult.text = message
         binding.tvScanResult.visibility = View.VISIBLE
-        binding.tvScanResult.setTextColor(
-            if (success) android.graphics.Color.parseColor("#276749")
-            else android.graphics.Color.parseColor("#C53030")
+        if (success) {
+            setStatusPill(binding.tvScanResult, R.color.success, R.color.success_light)
+        } else {
+            setStatusPill(binding.tvScanResult, R.color.danger, R.color.danger_light)
+        }
+    }
+
+    // Recolors a pill/badge-shaped TextView's background in place —
+    // used instead of setBackgroundColor everywhere the view's XML
+    // background is a rounded GradientDrawable, so the shape survives
+    // dynamic recoloring instead of being replaced by a flat rectangle.
+    private fun setStatusPill(view: android.widget.TextView, textColorRes: Int, bgColorRes: Int) {
+        val context = view.context
+        view.setTextColor(ContextCompat.getColor(context, textColorRes))
+        (view.background.mutate() as? GradientDrawable)?.setColor(
+            ContextCompat.getColor(context, bgColorRes)
         )
-        binding.tvScanResult.setBackgroundColor(
-            if (success) android.graphics.Color.parseColor("#F0FFF4")
-            else android.graphics.Color.parseColor("#FFF5F5")
-        )
+    }
+
+    // Hides the soft keyboard and drops focus from whichever EditText
+    // triggered it, so it can't linger on top of content that appears
+    // below (the student picker, action buttons, etc).
+    private fun hideKeyboard() {
+        val imm = requireContext().getSystemService(
+            android.content.Context.INPUT_METHOD_SERVICE
+        ) as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(binding.root.windowToken, 0)
+        binding.root.requestFocus()
     }
 
     private fun resetScan() {
@@ -516,8 +577,7 @@ class ScanFragment : Fragment() {
         )
 
         // ML Kit barcode scanner
-        val scanner = BarcodeScanning.getClient()
-        scanner.process(image)
+        barcodeScanner.process(image)
             .addOnSuccessListener { barcodes ->
                 val found = barcodes.firstOrNull { barcode ->
                     val value = barcode.rawValue
@@ -538,6 +598,10 @@ class ScanFragment : Fragment() {
                     val isIsbn = found.format == Barcode.FORMAT_EAN_13
 
                     requireActivity().runOnUiThread {
+                        // Fragment view may have been destroyed while this
+                        // callback was in flight (navigated away mid-scan)
+                        if (_binding == null) return@runOnUiThread
+
                         if (isIsbn && !isAssignMode) {
                             // ISBN scan in return mode
                             lastScannedIsbn = value
@@ -559,7 +623,10 @@ class ScanFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        scanGuidePulse?.cancel()
+        scanGuidePulse = null
         cameraExecutor.shutdown()
+        barcodeScanner.close()
         _binding = null
     }
 }

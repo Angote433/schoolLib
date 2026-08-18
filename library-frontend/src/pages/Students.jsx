@@ -4,6 +4,11 @@ import {
   classService,
   streamService,
 } from '../services/libraryApi';
+import { tokens } from '../styles/tokens';
+import {
+  Modal, FormField, Input, Select, Button, Banner, EmptyState,
+  Card, StatusBadge, Avatar,
+} from '../components/SharedComponents';
 
 export default function Students() {
 
@@ -125,9 +130,7 @@ export default function Students() {
         selectedStreamId
       );
 
-      showSuccess(
-        `${form.fullName} added to stream ${selectedStream?.streamName}`
-      );
+      showSuccess(`${form.fullName} added to stream ${selectedStream?.streamName}`);
       closeModal();
       loadStudents(selectedStreamId);
 
@@ -146,30 +149,32 @@ export default function Students() {
 
   // ── DEACTIVATE STUDENT ────────────────────────────────
   const handleDeactivate = async () => {
+    setSubmitting(true);
     try {
       await studentService.deactivate(selectedStudent.studentId);
-      showSuccess(
-        `${selectedStudent.fullName} has been deactivated`
-      );
+      showSuccess(`${selectedStudent.fullName} has been deactivated`);
       closeModal();
       loadStudents(selectedStreamId);
     } catch (err) {
       setError(err.response?.data || 'Failed to deactivate');
       closeModal();
+    } finally {
+      setSubmitting(false);
     }
   };
   // ── ACTIVATE STUDENT ────────────────────────────────
   const handleActivate = async () => {
+    setSubmitting(true);
     try {
       await studentService.activate(selectedStudent.studentId);
-      showSuccess(
-        `${selectedStudent.fullName} has been activated`
-      );
+      showSuccess(`${selectedStudent.fullName} has been activated`);
       closeModal();
       loadStudents(selectedStreamId);
     } catch (err) {
       setError(err.response?.data || 'Failed to activate');
       closeModal();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -185,30 +190,16 @@ export default function Students() {
     setError('');
   };
 
-  const selectedStream = streams.find(
-    s => s.streamId === parseInt(selectedStreamId)
-  );
-
-  const selectedClass = classes.find(
-    c => c.classId === parseInt(selectedClassId)
-  );
+  const selectedStream = streams.find(s => s.streamId === parseInt(selectedStreamId));
+  const selectedClass = classes.find(c => c.classId === parseInt(selectedClassId));
 
   // ── LOCAL FILTER ──────────────────────────────────────
-  // Filters already loaded students without API calls
   const filteredStudents = students.filter(student => {
-    // Active filter
     const activeMatch = showInactive ? true : student.isActive;
-
-    // Search filter
     const searchMatch =
       searchText === '' ||
-      student.fullName.toLowerCase().includes(
-        searchText.toLowerCase()
-      ) ||
-      student.admissionNumber.toLowerCase().includes(
-        searchText.toLowerCase()
-      );
-
+      student.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+      student.admissionNumber.toLowerCase().includes(searchText.toLowerCase());
     return activeMatch && searchMatch;
   });
 
@@ -217,49 +208,36 @@ export default function Students() {
 
   // ── RENDER ────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: 'Segoe UI, sans-serif' }}>
+    <div>
 
       {/* ── PAGE HEADER ──────────────────────────────── */}
       <div style={styles.pageHeader}>
         <div>
           <h1 style={styles.pageTitle}>Students</h1>
-          <p style={styles.pageSub}>
-            View and manage students by class and stream
-          </p>
+          <p style={styles.pageSub}>View and manage students by class and stream</p>
         </div>
 
-        {/* Add student — only when a stream is selected */}
         {selectedStreamId && (
-          <button
-            style={styles.primaryBtn}
-            onClick={() => setModal('addStudent')}
-          >
+          <Button variant="primary" onClick={() => setModal('addStudent')}>
             + Add Student
-          </button>
+          </Button>
         )}
       </div>
 
       {/* ── FEEDBACK ─────────────────────────────────── */}
-      {success && (
-        <div style={styles.successMsg}>✅ {success}</div>
-      )}
-      {error && !modal && (
-        <div style={styles.errorMsg}>⚠️ {error}</div>
-      )}
+      {success && <Banner type="success">{success}</Banner>}
+      {error && !modal && <Banner type="error">{error}</Banner>}
 
       {/* ── FILTER BAR ───────────────────────────────── */}
-      <div style={styles.filterBar}>
+      <Card style={styles.filterBar}>
 
-        {/* Class selector */}
         <div style={styles.filterGroup}>
           <label style={styles.filterLabel}>Class</label>
           {loadingClasses ? (
-            <div style={styles.selectPlaceholder}>
-              Loading classes...
-            </div>
+            <div style={styles.selectPlaceholder}>Loading classes…</div>
           ) : (
-            <select
-              style={styles.select}
+            <Select
+              style={{ minWidth: 200 }}
               value={selectedClassId}
               onChange={e => setSelectedClassId(e.target.value)}
             >
@@ -269,25 +247,20 @@ export default function Students() {
                   {cls.className} ({cls.academicYear})
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
 
-        {/* Stream selector — appears after class is selected */}
         {selectedClassId && (
           <div style={styles.filterGroup}>
             <label style={styles.filterLabel}>Stream</label>
             {loadingStreams ? (
-              <div style={styles.selectPlaceholder}>
-                Loading streams...
-              </div>
+              <div style={styles.selectPlaceholder}>Loading streams…</div>
             ) : streams.length === 0 ? (
-              <div style={styles.selectPlaceholder}>
-                No streams in this class yet
-              </div>
+              <div style={styles.selectPlaceholder}>No streams in this class yet</div>
             ) : (
-              <select
-                style={styles.select}
+              <Select
+                style={{ minWidth: 200 }}
                 value={selectedStreamId}
                 onChange={e => setSelectedStreamId(e.target.value)}
               >
@@ -295,23 +268,20 @@ export default function Students() {
                 {streams.map(s => (
                   <option key={s.streamId} value={s.streamId}>
                     {s.streamName}
-                    {s.teacher
-                      ? ` — ${s.teacher.fullName}`
-                      : ' — No teacher'}
+                    {s.teacher ? ` — ${s.teacher.fullName}` : ' — No teacher'}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
           </div>
         )}
 
-        {/* Search and toggle — only when stream is selected */}
         {selectedStreamId && (
           <>
             <div style={styles.filterGroup}>
               <label style={styles.filterLabel}>Search</label>
-              <input
-                style={styles.searchInput}
+              <Input
+                style={{ minWidth: 220 }}
                 placeholder="Name or admission number..."
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
@@ -322,23 +292,13 @@ export default function Students() {
               <label style={styles.filterLabel}>Show</label>
               <div style={styles.toggleRow}>
                 <button
-                  style={{
-                    ...styles.toggleBtn,
-                    ...(showInactive
-                      ? {}
-                      : styles.toggleBtnActive),
-                  }}
+                  style={{ ...styles.toggleBtn, ...(showInactive ? {} : styles.toggleBtnActive) }}
                   onClick={() => setShowInactive(false)}
                 >
                   Active ({activeCount})
                 </button>
                 <button
-                  style={{
-                    ...styles.toggleBtn,
-                    ...(showInactive
-                      ? styles.toggleBtnActive
-                      : {}),
-                  }}
+                  style={{ ...styles.toggleBtn, ...(showInactive ? styles.toggleBtnActive : {}) }}
                   onClick={() => setShowInactive(true)}
                 >
                   All ({students.length})
@@ -348,15 +308,14 @@ export default function Students() {
           </>
         )}
 
-      </div>
+      </Card>
 
       {/* ── STREAM SUMMARY BAR ───────────────────────── */}
       {selectedStreamId && selectedStream && (
         <div style={styles.streamSummary}>
           <div style={styles.summaryLeft}>
             <span style={styles.summaryStreamName}>
-              {selectedClass?.className} —{' '}
-              Stream {selectedStream.streamName}
+              {selectedClass?.className} — Stream {selectedStream.streamName}
             </span>
             <span style={styles.summaryTeacher}>
               {selectedStream.teacher
@@ -366,21 +325,15 @@ export default function Students() {
           </div>
           <div style={styles.summaryStats}>
             <div style={styles.summaryStat}>
-              <span style={styles.summaryStatValue}>
-                {activeCount}
-              </span>
+              <span style={styles.summaryStatValue}>{activeCount}</span>
               <span style={styles.summaryStatLabel}>Active</span>
             </div>
             <div style={styles.summaryStat}>
-              <span style={styles.summaryStatValue}>
-                {inactiveCount}
-              </span>
+              <span style={styles.summaryStatValue}>{inactiveCount}</span>
               <span style={styles.summaryStatLabel}>Inactive</span>
             </div>
             <div style={styles.summaryStat}>
-              <span style={styles.summaryStatValue}>
-                {selectedStream.capacity}
-              </span>
+              <span style={styles.summaryStatValue}>{selectedStream.capacity}</span>
               <span style={styles.summaryStatLabel}>Capacity</span>
             </div>
           </div>
@@ -389,48 +342,22 @@ export default function Students() {
 
       {/* ── MAIN CONTENT AREA ────────────────────────── */}
       {!selectedClassId ? (
-        // No class selected yet
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>🎓</div>
-          <div style={styles.emptyTitle}>Select a class to begin</div>
-          <div style={styles.emptySub}>
-            Choose a class from the dropdown above to view its streams
-          </div>
-        </div>
-
+        <EmptyState icon="🎓" title="Select a class to begin" subtitle="Choose a class from the dropdown above to view its streams" />
       ) : !selectedStreamId ? (
-        // Class selected but no stream
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>🏫</div>
-          <div style={styles.emptyTitle}>Select a stream</div>
-          <div style={styles.emptySub}>
-            Choose a stream to view its students
-          </div>
-        </div>
-
+        <EmptyState icon="🏫" title="Select a stream" subtitle="Choose a stream to view its students" />
       ) : loadingStudents ? (
-        <div style={styles.loadingText}>Loading students...</div>
-
+        <div style={styles.loadingText}>Loading students…</div>
       ) : filteredStudents.length === 0 ? (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>👤</div>
-          <div style={styles.emptyTitle}>
-            {searchText
-              ? 'No students match your search'
-              : 'No students in this stream'}
-          </div>
-          <div style={styles.emptySub}>
-            {!searchText &&
-              'Click "+ Add Student" to add the first student'}
-          </div>
-        </div>
-
+        <EmptyState
+          icon="👤"
+          title={searchText ? 'No students match your search' : 'No students in this stream'}
+          subtitle={!searchText && 'Click "+ Add Student" to add the first student'}
+        />
       ) : (
-        // Student table
-        <div style={styles.tableCard}>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
           <table style={styles.table}>
             <thead>
-              <tr style={styles.tableHead}>
+              <tr>
                 <th style={styles.th}>#</th>
                 <th style={styles.th}>Admission No.</th>
                 <th style={styles.th}>Full Name</th>
@@ -444,80 +371,45 @@ export default function Students() {
                 <tr
                   key={student.studentId}
                   style={styles.tableRow}
-                  onMouseEnter={e =>
-                    e.currentTarget.style.background = '#f9fafb'
-                  }
-                  onMouseLeave={e =>
-                    e.currentTarget.style.background = 'transparent'
-                  }
+                  onMouseEnter={e => e.currentTarget.style.background = tokens.colors.surface}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <td style={styles.td}>{index + 1}</td>
-
                   <td style={styles.td}>
-                    <span style={styles.admissionNo}>
-                      {student.admissionNumber}
-                    </span>
+                    <span style={styles.admissionNo}>{student.admissionNumber}</span>
                   </td>
-
                   <td style={styles.td}>
-                    <div style={styles.studentName}>
-                      {student.fullName}
+                    <div style={styles.studentRow}>
+                      <Avatar name={student.fullName} size={30} background={tokens.colors.primary} />
+                      <span style={styles.studentName}>{student.fullName}</span>
                     </div>
                   </td>
-
+                  <td style={styles.td}>{student.yearEnrolled}</td>
                   <td style={styles.td}>
-                    {student.yearEnrolled}
+                    <StatusBadge status={student.isActive ? 'ACTIVE' : 'INACTIVE'} label={student.isActive ? 'Active' : 'Inactive'} />
                   </td>
-
-                  <td style={styles.td}>
-                    <span style={{
-                      ...styles.statusBadge,
-                      background: student.isActive
-                        ? '#f0fff4' : '#fff5f5',
-                      color: student.isActive
-                        ? '#276749' : '#c53030',
-                    }}>
-                      {student.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-
                   <td style={styles.td}>
                     <div style={styles.actionRow}>
-                      {/* View details */}
-                      <button
-                        style={styles.viewBtn}
-                        onClick={() => {
-                          setSelectedStudent(student);
-                          setModal('viewStudent');
-                        }}
+                      <Button
+                        variant="secondary" size="sm"
+                        onClick={() => { setSelectedStudent(student); setModal('viewStudent'); }}
                       >
                         View
-                      </button>
-
-                      {/* Deactivate — only for active students */}
-                      {student.isActive && (
-                        <button
-                          style={styles.deactivateBtn}
-                          onClick={() => {
-                            setSelectedStudent(student);
-                            setModal('confirmDeactivate');
-                          }}
+                      </Button>
+                      {student.isActive ? (
+                        <Button
+                          variant="danger" size="sm"
+                          onClick={() => { setSelectedStudent(student); setModal('confirmDeactivate'); }}
                         >
                           Deactivate
-                        </button>
-                      )}
-
-                      {/* Activate — only for inactive students */}
-                      {!student.isActive && (
-                        <button
-                          style={styles.activateBtn}
-                          onClick={() => {
-                            setSelectedStudent(student);
-                            setModal('confirmActivate');
-                          }}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="success" size="sm"
+                          onClick={() => { setSelectedStudent(student); setModal('confirmActivate'); }}
                         >
                           Activate
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </td>
@@ -525,82 +417,47 @@ export default function Students() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       {/* ── ADD STUDENT MODAL ────────────────────────── */}
       {modal === 'addStudent' && (
-        <Modal
-          title={`Add Student to Stream ${selectedStream?.streamName}`}
-          onClose={closeModal}
-        >
+        <Modal title={`Add Student to Stream ${selectedStream?.streamName}`} onClose={closeModal}>
           <form onSubmit={handleAddStudent}>
-            {error && (
-              <div style={styles.modalError}>{error}</div>
-            )}
+            {error && <Banner type="error">{error}</Banner>}
 
-            <FormField label="Admission Number">
-              <input
-                style={styles.input}
+            <FormField label="Admission Number" hint="Must be unique across the school">
+              <Input
                 placeholder="e.g. ADM2025001"
                 value={form.admissionNumber}
-                onChange={e => setForm({
-                  ...form,
-                  admissionNumber: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, admissionNumber: e.target.value })}
                 required
               />
-              <span style={styles.inputHint}>
-                Must be unique across the school
-              </span>
             </FormField>
 
             <FormField label="Full Name">
-              <input
-                style={styles.input}
+              <Input
                 placeholder="e.g. John Mwangi"
                 value={form.fullName}
-                onChange={e => setForm({
-                  ...form,
-                  fullName: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, fullName: e.target.value })}
                 required
               />
             </FormField>
 
             <FormField label="Year Enrolled">
-              <input
-                style={styles.input}
-                type="number"
-                min="2000"
-                max="2100"
+              <Input
+                type="number" min="2000" max="2100"
                 value={form.yearEnrolled}
-                onChange={e => setForm({
-                  ...form,
-                  yearEnrolled: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, yearEnrolled: e.target.value })}
                 required
               />
             </FormField>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelBtn}
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                style={{
-                  ...styles.primaryBtn,
-                  opacity: submitting ? 0.7 : 1,
-                }}
-                disabled={submitting}
-              >
-                {submitting ? 'Adding...' : 'Add Student'}
-              </button>
+              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                {submitting ? 'Adding…' : 'Add Student'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -608,68 +465,37 @@ export default function Students() {
 
       {/* ── VIEW STUDENT MODAL ───────────────────────── */}
       {modal === 'viewStudent' && selectedStudent && (
-        <Modal
-          title="Student Details"
-          onClose={closeModal}
-        >
+        <Modal title="Student Details" onClose={closeModal}>
           <div style={styles.studentProfile}>
-
-            <div style={styles.profileAvatar}>
-              {selectedStudent.fullName.charAt(0).toUpperCase()}
-            </div>
-
-            <div style={styles.profileName}>
-              {selectedStudent.fullName}
-            </div>
+            <Avatar name={selectedStudent.fullName} size={64} background={tokens.colors.primary} />
+            <div style={styles.profileName}>{selectedStudent.fullName}</div>
 
             <div style={styles.profileDetails}>
               <div style={styles.profileRow}>
-                <span style={styles.profileLabel}>
-                  Admission No.
-                </span>
-                <span style={styles.profileValue}>
-                  {selectedStudent.admissionNumber}
-                </span>
+                <span style={styles.profileLabel}>Admission No.</span>
+                <span style={styles.profileValue}>{selectedStudent.admissionNumber}</span>
               </div>
               <div style={styles.profileRow}>
                 <span style={styles.profileLabel}>Stream</span>
-                <span style={styles.profileValue}>
-                  {selectedStudent.stream?.streamName || '—'}
-                </span>
+                <span style={styles.profileValue}>{selectedStudent.stream?.streamName || '—'}</span>
               </div>
               <div style={styles.profileRow}>
-                <span style={styles.profileLabel}>
-                  Year Enrolled
-                </span>
-                <span style={styles.profileValue}>
-                  {selectedStudent.yearEnrolled}
-                </span>
+                <span style={styles.profileLabel}>Year Enrolled</span>
+                <span style={styles.profileValue}>{selectedStudent.yearEnrolled}</span>
               </div>
               <div style={styles.profileRow}>
                 <span style={styles.profileLabel}>Status</span>
-                <span style={{
-                  ...styles.statusBadge,
-                  background: selectedStudent.isActive
-                    ? '#f0fff4' : '#fff5f5',
-                  color: selectedStudent.isActive
-                    ? '#276749' : '#c53030',
-                }}>
-                  {selectedStudent.isActive ? 'Active' : 'Inactive'}
-                </span>
+                <StatusBadge status={selectedStudent.isActive ? 'ACTIVE' : 'INACTIVE'} label={selectedStudent.isActive ? 'Active' : 'Inactive'} />
               </div>
             </div>
 
             <div style={styles.profileNote}>
-              📌 Full book history and loss reports will be
-              visible here in a future update.
+              📌 Full book history and loss reports will be visible here in a future update.
             </div>
-
           </div>
 
           <div style={styles.modalActions}>
-            <button style={styles.cancelBtn} onClick={closeModal}>
-              Close
-            </button>
+            <Button variant="secondary" onClick={closeModal}>Close</Button>
           </div>
         </Modal>
       )}
@@ -677,11 +503,11 @@ export default function Students() {
       {/* ── CONFIRM DEACTIVATE MODAL ─────────────────── */}
       {modal === 'confirmDeactivate' && (
         <Modal title="Deactivate Student" onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
             <p style={styles.confirmText}>
-              Deactivate{' '}
-              <strong>{selectedStudent?.fullName}</strong>?
+              Deactivate <strong>{selectedStudent?.fullName}</strong>?
             </p>
             <p style={styles.confirmSub}>
               This student will be marked as inactive.
@@ -690,15 +516,10 @@ export default function Students() {
             </p>
           </div>
           <div style={styles.modalActions}>
-            <button style={styles.cancelBtn} onClick={closeModal}>
-              Cancel
-            </button>
-            <button
-              style={styles.dangerBtn}
-              onClick={handleDeactivate}
-            >
-              Yes, Deactivate
-            </button>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeactivate} disabled={submitting}>
+              {submitting ? 'Deactivating…' : 'Yes, Deactivate'}
+            </Button>
           </div>
         </Modal>
       )}
@@ -706,11 +527,11 @@ export default function Students() {
       {/* ── CONFIRM ACTIVATE MODAL ───────────────────── */}
       {modal === 'confirmActivate' && (
         <Modal title="Activate Student" onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
             <p style={styles.confirmText}>
-              Activate{' '}
-              <strong>{selectedStudent?.fullName}</strong>?
+              Activate <strong>{selectedStudent?.fullName}</strong>?
             </p>
             <p style={styles.confirmSub}>
               This student will be marked as active.
@@ -718,53 +539,14 @@ export default function Students() {
             </p>
           </div>
           <div style={styles.modalActions}>
-            <button style={styles.cancelBtn} onClick={closeModal}>
-              Cancel
-            </button>
-            <button
-              style={styles.primaryBtn}
-              onClick={handleActivate}
-            >
-              Yes, Activate
-            </button>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="primary" onClick={handleActivate} disabled={submitting}>
+              {submitting ? 'Activating…' : 'Yes, Activate'}
+            </Button>
           </div>
         </Modal>
       )}
 
-    </div>
-  );
-}
-
-// ── MODAL ─────────────────────────────────────────────────────────────
-function Modal({ title, onClose, children }) {
-  return (
-    <div style={modalStyles.backdrop} onClick={onClose}>
-      <div
-        style={modalStyles.box}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={modalStyles.header}>
-          <h3 style={modalStyles.title}>{title}</h3>
-          <button style={modalStyles.closeBtn} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <div style={modalStyles.body}>{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function FormField({ label, children }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label style={{
-        display: 'block', fontSize: 13,
-        fontWeight: 600, color: '#333', marginBottom: 6,
-      }}>
-        {label}
-      </label>
-      {children}
     </div>
   );
 }
@@ -773,275 +555,77 @@ function FormField({ label, children }) {
 const styles = {
   pageHeader: {
     display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 24,
+    alignItems: 'flex-start', marginBottom: tokens.spacing.lg, flexWrap: 'wrap', gap: 12,
   },
-  pageTitle: {
-    margin: 0, fontSize: 24,
-    fontWeight: 700, color: '#1a1a2e',
-  },
-  pageSub: { margin: '4px 0 0', color: '#666', fontSize: 14 },
-  successMsg: {
-    background: '#f0fff4', border: '1px solid #c6f6d5',
-    borderRadius: 8, padding: '10px 16px',
-    color: '#276749', fontSize: 13, marginBottom: 16,
-  },
-  errorMsg: {
-    background: '#fff5f5', border: '1px solid #fed7d7',
-    borderRadius: 8, padding: '10px 16px',
-    color: '#c53030', fontSize: 13, marginBottom: 16,
-  },
+  pageTitle: { margin: 0, fontSize: 24, fontWeight: 700, color: tokens.colors.textPrimary },
+  pageSub: { margin: '4px 0 0', color: tokens.colors.textSecondary, fontSize: 14 },
   filterBar: {
-    background: '#fff', borderRadius: 12,
-    padding: '16px 20px', marginBottom: 16,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    display: 'flex', gap: 20,
+    display: 'flex', gap: 20, marginBottom: tokens.spacing.md,
     flexWrap: 'wrap', alignItems: 'flex-end',
   },
-  filterGroup: {
-    display: 'flex', flexDirection: 'column', gap: 6,
-  },
+  filterGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
   filterLabel: {
-    fontSize: 12, fontWeight: 600,
-    color: '#888', textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 11, fontWeight: 700, color: tokens.colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5,
   },
-  select: {
-    padding: '8px 12px',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    fontSize: 14, outline: 'none',
-    background: '#fff', minWidth: 200,
-    fontFamily: 'Segoe UI, sans-serif', cursor: 'pointer',
-  },
-  selectPlaceholder: {
-    padding: '8px 12px', color: '#aaa',
-    fontSize: 13, fontStyle: 'italic',
-  },
-  searchInput: {
-    padding: '8px 12px',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    fontSize: 14, outline: 'none',
-    minWidth: 220, fontFamily: 'Segoe UI, sans-serif',
-  },
-  toggleRow: { display: 'flex', gap: 0 },
+  selectPlaceholder: { padding: '8px 12px', color: tokens.colors.textMuted, fontSize: 13, fontStyle: 'italic' },
+  toggleRow: { display: 'flex', gap: 0, borderRadius: tokens.radius.sm, overflow: 'hidden' },
   toggleBtn: {
-    padding: '8px 14px', border: '1.5px solid #e0e0e0',
-    background: '#f0f2f5', color: '#666',
-    fontSize: 13, fontWeight: 500, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
+    padding: '9px 14px', border: `1.5px solid ${tokens.colors.border}`,
+    background: tokens.colors.surface, color: tokens.colors.textSecondary,
+    fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: tokens.font.family,
   },
   toggleBtnActive: {
-    background: '#1a1a2e', color: '#fff',
-    border: '1.5px solid #1a1a2e', fontWeight: 600,
+    background: tokens.colors.primary, color: '#fff',
+    border: `1.5px solid ${tokens.colors.primary}`, fontWeight: 600,
   },
   streamSummary: {
-    background: '#1a1a2e', borderRadius: 12,
-    padding: '14px 20px', marginBottom: 16,
+    background: `linear-gradient(120deg, ${tokens.colors.primary}, ${tokens.colors.primaryDark})`,
+    borderRadius: tokens.radius.md, padding: '16px 22px', marginBottom: tokens.spacing.md,
     display: 'flex', justifyContent: 'space-between',
     alignItems: 'center', flexWrap: 'wrap', gap: 12,
+    boxShadow: tokens.shadows.md,
   },
-  summaryLeft: {
-    display: 'flex', flexDirection: 'column', gap: 3,
-  },
-  summaryStreamName: {
-    color: '#fff', fontWeight: 700, fontSize: 16,
-  },
-  summaryTeacher: {
-    color: 'rgba(255,255,255,0.55)', fontSize: 12,
-  },
-  summaryStats: {
-    display: 'flex', gap: 24,
-  },
-  summaryStat: {
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 2,
-  },
-  summaryStatValue: {
-    color: '#fff', fontWeight: 700, fontSize: 20,
-  },
-  summaryStatLabel: {
-    color: 'rgba(255,255,255,0.5)', fontSize: 11,
-  },
-  loadingText: {
-    color: '#888', padding: 40,
-    textAlign: 'center', fontSize: 14,
-  },
-  emptyState: {
-    background: '#fff', borderRadius: 12, padding: 60,
-    textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: {
-    fontSize: 18, fontWeight: 700,
-    color: '#1a1a2e', marginBottom: 6,
-  },
-  emptySub: { color: '#888', fontSize: 14 },
-  tableCard: {
-    background: '#fff', borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    overflow: 'hidden',
-  },
-  table: {
-    width: '100%', borderCollapse: 'collapse', fontSize: 14,
-  },
-  tableHead: { borderBottom: '2px solid #f0f2f5' },
+  summaryLeft: { display: 'flex', flexDirection: 'column', gap: 3 },
+  summaryStreamName: { color: '#fff', fontWeight: 700, fontSize: 16 },
+  summaryTeacher: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
+  summaryStats: { display: 'flex', gap: 24 },
+  summaryStat: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  summaryStatValue: { color: '#fff', fontWeight: 700, fontSize: 20 },
+  summaryStatLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 11 },
+  loadingText: { color: tokens.colors.textMuted, padding: 40, textAlign: 'center', fontSize: 14 },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
   th: {
     padding: '12px 16px', textAlign: 'left',
-    color: '#888', fontWeight: 600, fontSize: 12,
+    color: tokens.colors.textMuted, fontWeight: 600, fontSize: 11,
     textTransform: 'uppercase', letterSpacing: 0.5,
-    background: '#fafbfc',
+    background: tokens.colors.surface, borderBottom: `2px solid ${tokens.colors.border}`,
   },
-  tableRow: {
-    borderBottom: '1px solid #f0f2f5',
-    transition: 'background 0.15s',
-  },
-  td: { padding: '12px 16px', color: '#333' },
+  tableRow: { borderBottom: `1px solid ${tokens.colors.border}`, transition: 'background 0.12s' },
+  td: { padding: '12px 16px', color: tokens.colors.textPrimary },
   admissionNo: {
-    fontFamily: 'monospace', fontSize: 13,
-    background: '#f0f2f5', padding: '2px 8px',
-    borderRadius: 4, color: '#555',
+    fontFamily: tokens.font.mono, fontSize: 12,
+    background: tokens.colors.surface, padding: '3px 8px',
+    borderRadius: 4, color: tokens.colors.textSecondary,
   },
-  studentName: { fontWeight: 600, color: '#1a1a2e' },
-  statusBadge: {
-    fontSize: 11, fontWeight: 600,
-    padding: '3px 10px', borderRadius: 20,
-    display: 'inline-block',
-  },
+  studentRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  studentName: { fontWeight: 600, color: tokens.colors.textPrimary },
   actionRow: { display: 'flex', gap: 8 },
-  viewBtn: {
-    padding: '5px 12px',
-    background: '#f0f2f5', color: '#333',
-    border: '1.5px solid #e0e0e0', borderRadius: 6,
-    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  deactivateBtn: {
-    padding: '5px 12px',
-    background: '#fff5f5', color: '#c53030',
-    border: '1.5px solid #fed7d7', borderRadius: 6,
-    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  activateBtn: {
-    padding: '5px 12px',
-    background: '#f0fff4', color: '#276749',
-    border: '1.5px solid #c6f6d5', borderRadius: 6,
-    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  primaryBtn: {
-    background: '#1a1a2e', color: '#fff',
-    border: 'none', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  cancelBtn: {
-    background: '#f0f2f5', color: '#333',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  dangerBtn: {
-    background: '#fff5f5', color: '#c53030',
-    border: '1.5px solid #fed7d7', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  input: {
-    width: '100%', padding: '9px 12px',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    fontSize: 14, outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  inputHint: {
-    fontSize: 11, color: '#999',
-    marginTop: 4, display: 'block',
-  },
-  modalError: {
-    background: '#fff5f5', border: '1px solid #fed7d7',
-    borderRadius: 8, padding: '10px 14px',
-    color: '#c53030', fontSize: 13, marginBottom: 16,
-  },
-  modalActions: {
-    display: 'flex', justifyContent: 'flex-end',
-    gap: 10, marginTop: 20,
-  },
-  confirmContent: {
-    textAlign: 'center', padding: '8px 0 16px',
-  },
-  confirmText: {
-    fontSize: 15, color: '#333',
-    margin: '0 0 8px', lineHeight: 1.5,
-  },
-  confirmSub: {
-    fontSize: 13, color: '#888',
-    margin: 0, lineHeight: 1.5,
-  },
-  studentProfile: {
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 8,
-  },
-  profileAvatar: {
-    width: 64, height: 64, borderRadius: '50%',
-    background: '#1a1a2e', color: '#fff',
-    display: 'flex', alignItems: 'center',
-    justifyContent: 'center', fontSize: 28,
-    fontWeight: 700, marginBottom: 4,
-  },
-  profileName: {
-    fontSize: 20, fontWeight: 700, color: '#1a1a2e',
-  },
-  profileDetails: {
-    width: '100%', marginTop: 12,
-    display: 'flex', flexDirection: 'column', gap: 0,
-  },
+  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
+  confirmContent: { textAlign: 'center', padding: '8px 0 16px' },
+  confirmText: { fontSize: 15, color: tokens.colors.textPrimary, margin: '0 0 8px', lineHeight: 1.5 },
+  confirmSub: { fontSize: 13, color: tokens.colors.textMuted, margin: 0, lineHeight: 1.5 },
+  studentProfile: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  profileName: { fontSize: 20, fontWeight: 700, color: tokens.colors.textPrimary, marginTop: 8 },
+  profileDetails: { width: '100%', marginTop: 12, display: 'flex', flexDirection: 'column' },
   profileRow: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '10px 0',
-    borderBottom: '1px solid #f0f2f5',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '10px 0', borderBottom: `1px solid ${tokens.colors.border}`,
   },
-  profileLabel: {
-    fontSize: 13, color: '#888', fontWeight: 500,
-  },
-  profileValue: {
-    fontSize: 13, color: '#333', fontWeight: 600,
-  },
+  profileLabel: { fontSize: 13, color: tokens.colors.textMuted, fontWeight: 500 },
+  profileValue: { fontSize: 13, color: tokens.colors.textPrimary, fontWeight: 600 },
   profileNote: {
-    fontSize: 12, color: '#aaa',
-    textAlign: 'center', marginTop: 8,
-    fontStyle: 'italic', lineHeight: 1.5,
+    fontSize: 12, color: tokens.colors.textMuted,
+    textAlign: 'center', marginTop: 10, fontStyle: 'italic', lineHeight: 1.5,
   },
-};
-
-const modalStyles = {
-  backdrop: {
-    position: 'fixed', inset: 0,
-    background: 'rgba(0,0,0,0.45)',
-    display: 'flex', alignItems: 'center',
-    justifyContent: 'center', zIndex: 1000, padding: 20,
-  },
-  box: {
-    background: '#fff', borderRadius: 14,
-    width: '100%', maxWidth: 460,
-    maxHeight: '90vh', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-  },
-  header: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '18px 22px',
-    borderBottom: '1px solid #f0f2f5',
-  },
-  title: {
-    margin: 0, fontSize: 17,
-    fontWeight: 700, color: '#1a1a2e',
-  },
-  closeBtn: {
-    background: 'none', border: 'none',
-    fontSize: 16, cursor: 'pointer',
-    color: '#888', padding: 4,
-  },
-  body: { padding: '20px 22px', overflowY: 'auto' },
 };

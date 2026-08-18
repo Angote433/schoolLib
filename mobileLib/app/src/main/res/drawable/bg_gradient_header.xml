@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full-bleed primary gradient, top to bottom. Used as the login
+     screen background and any other full-screen dark surface. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="@color/primary"
+        android:endColor="@color/primary_dark"
+        android:type="linear"/>
+</shape>

@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { classService, streamService, userService } from '../services/libraryApi';
+import { tokens } from '../styles/tokens';
+import {
+  Modal, FormField, Input, Button, Banner, EmptyState, Card, Avatar,
+} from '../components/SharedComponents';
 
 export default function Classes() {
 
@@ -7,7 +11,6 @@ export default function Classes() {
   const [classes, setClasses] = useState([]);
 
   // Which class is currently expanded to show streams
-  // Stores the classId of the expanded class, null if none
   const [expandedClassId, setExpandedClassId] = useState(null);
 
   // Streams for the currently expanded class
@@ -21,7 +24,6 @@ export default function Classes() {
   const [loadingStreams, setLoadingStreams] = useState(false);
 
   // Controls which modal is open
-  // null = no modal open
   const [modal, setModal] = useState(null);
   // modal values: 'addClass' | 'addStream' | 'assignTeacher'
 
@@ -46,6 +48,7 @@ export default function Classes() {
   // Feedback messages
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // ── LOAD CLASSES ON PAGE LOAD ─────────────────────────
   useEffect(() => {
@@ -66,7 +69,6 @@ export default function Classes() {
 
   // ── EXPAND CLASS TO SEE STREAMS ───────────────────────
   const handleExpandClass = async (classId) => {
-    // If clicking the already expanded class — collapse it
     if (expandedClassId === classId) {
       setExpandedClassId(null);
       setStreams([]);
@@ -89,7 +91,9 @@ export default function Classes() {
   // ── ADD CLASS ─────────────────────────────────────────
   const handleAddClass = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setError('');
+    setSubmitting(true);
 
     try {
       await classService.create({
@@ -102,7 +106,6 @@ export default function Classes() {
       closeModal();
       loadClasses();
 
-      // Reset form
       setClassForm({
         className: '',
         gradeLevel: '',
@@ -111,13 +114,17 @@ export default function Classes() {
 
     } catch (err) {
       setError(err.response?.data || 'Failed to create class');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // ── ADD STREAM ────────────────────────────────────────
   const handleAddStream = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setError('');
+    setSubmitting(true);
 
     try {
       await streamService.create(
@@ -132,15 +139,15 @@ export default function Classes() {
       showSuccess(`Stream ${streamForm.streamName} created`);
       closeModal();
 
-      // Reload streams for this class
       const res = await streamService.getByClass(expandedClassId);
       setStreams(res.data);
 
-      // Reset form
       setStreamForm({ streamName: '', capacity: 40 });
 
     } catch (err) {
       setError(err.response?.data || 'Failed to create stream');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -151,13 +158,9 @@ export default function Classes() {
     setError('');
 
     try {
-      // Load all teachers from the database
       const res = await userService.getByRole('TEACHER');
-
-      // Only show active teachers
       const activeTeachers = res.data.filter(t => t.active);
       setTeachers(activeTeachers);
-
     } catch (err) {
       setTeachers([]);
     }
@@ -167,12 +170,13 @@ export default function Classes() {
 
   //  ASSIGN TEACHER
   const handleAssignTeacher = async () => {
-    if (!selectedTeacherId) {
-      setError('Please select a teacher first');
+    if (!selectedTeacherId || submitting) {
+      if (!selectedTeacherId) setError('Please select a teacher first');
       return;
     }
 
     setError('');
+    setSubmitting(true);
 
     try {
       await streamService.assignTeacher(
@@ -180,31 +184,25 @@ export default function Classes() {
         parseInt(selectedTeacherId)
       );
 
-      // Find the teacher name for the success message
-      const teacher = teachers.find(
-        t => t.userId === parseInt(selectedTeacherId)
-      );
+      const teacher = teachers.find(t => t.userId === parseInt(selectedTeacherId));
 
-      showSuccess(
-        `${teacher?.fullName || 'Teacher'} assigned to stream ${selectedStream.streamName}`
-      );
+      showSuccess(`${teacher?.fullName || 'Teacher'} assigned to stream ${selectedStream.streamName}`);
 
       closeModal();
 
-      // Reload streams to show updated teacher
       const res = await streamService.getByClass(expandedClassId);
       setStreams(res.data);
 
     } catch (err) {
       setError(err.response?.data || 'Failed to assign teacher');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // ── HELPERS ───────────────────────────────────────────
-
   const showSuccess = (message) => {
     setSuccess(message);
-    // Auto-hide success message after 3 seconds
     setTimeout(() => setSuccess(''), 3000);
   };
 
@@ -213,112 +211,68 @@ export default function Classes() {
     setError('');
   };
 
-  // Find the class object for the expanded class
-  const expandedClass = classes.find(
-    c => c.classId === expandedClassId
-  );
+  const expandedClass = classes.find(c => c.classId === expandedClassId);
 
   // ── RENDER ────────────────────────────────────────────
-
   return (
-    <div style={{ fontFamily: 'Segoe UI, sans-serif' }}>
+    <div>
 
       {/* ── PAGE HEADER ──────────────────────────────── */}
       <div style={styles.pageHeader}>
         <div>
-          <h1 style={styles.pageTitle}>Classes & Streams</h1>
-          <p style={styles.pageSub}>
-            Manage school classes and their streams
-          </p>
+          <h1 style={styles.pageTitle}>Classes &amp; Streams</h1>
+          <p style={styles.pageSub}>Manage school classes and their streams</p>
         </div>
-        <button
-          style={styles.primaryBtn}
-          onClick={() => setModal('addClass')}
-        >
+        <Button variant="primary" onClick={() => setModal('addClass')}>
           + Add Class
-        </button>
+        </Button>
       </div>
 
       {/* ── FEEDBACK MESSAGES ────────────────────────── */}
-      {success && (
-        <div style={styles.successMsg}>
-          ✅ {success}
-        </div>
-      )}
-      {error && !modal && (
-        <div style={styles.errorMsg}>
-          ⚠️ {error}
-        </div>
-      )}
+      {success && <Banner type="success">{success}</Banner>}
+      {error && !modal && <Banner type="error">{error}</Banner>}
 
       {/* ── CLASSES LIST ─────────────────────────────── */}
       {loadingClasses ? (
-        <div style={styles.loadingText}>Loading classes...</div>
+        <div style={styles.loadingText}>Loading classes…</div>
       ) : classes.length === 0 ? (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>🏫</div>
-          <div style={styles.emptyTitle}>No classes yet</div>
-          <div style={styles.emptySub}>
-            Click "Add Class" to create the first class
-          </div>
-        </div>
+        <EmptyState icon="🏫" title="No classes yet" subtitle='Click "Add Class" to create the first class' />
       ) : (
         <div style={styles.classesList}>
           {classes.map((cls) => {
             const isExpanded = expandedClassId === cls.classId;
 
             return (
-              <div key={cls.classId} style={styles.classCard}>
+              <Card key={cls.classId} style={{ padding: 0, overflow: 'hidden' }}>
 
                 {/* ── CLASS ROW ──────────────────────── */}
-                <div
-                  style={styles.classRow}
-                  onClick={() => handleExpandClass(cls.classId)}
-                >
+                <div style={styles.classRow} onClick={() => handleExpandClass(cls.classId)}>
                   <div style={styles.classLeft}>
-                    {/* Expand/collapse arrow */}
-                    <span style={styles.arrow}>
-                      {isExpanded ? '▼' : '▶'}
-                    </span>
-
-                    <div style={styles.classIcon}>
-                      {cls.gradeLevel}
-                    </div>
-
+                    <span style={styles.arrow}>{isExpanded ? '▼' : '▶'}</span>
+                    <div style={styles.classIcon}>{cls.gradeLevel}</div>
                     <div>
-                      <div style={styles.className}>
-                        {cls.className}
-                      </div>
+                      <div style={styles.className}>{cls.className}</div>
                       <div style={styles.classMeta}>
-                        Grade {cls.gradeLevel} •{' '}
-                        Academic Year {cls.academicYear}
+                        Grade {cls.gradeLevel} • Academic Year {cls.academicYear}
                       </div>
                     </div>
                   </div>
 
-                  {/* Add Stream button — only when expanded */}
                   {isExpanded && (
-                    <button
-                      style={styles.secondaryBtn}
-                      onClick={(e) => {
-                        // Stop click from collapsing the class
-                        e.stopPropagation();
-                        setModal('addStream');
-                      }}
+                    <Button
+                      variant="secondary" size="sm"
+                      onClick={(e) => { e.stopPropagation(); setModal('addStream'); }}
                     >
                       + Add Stream
-                    </button>
+                    </Button>
                   )}
                 </div>
 
                 {/* ── STREAMS SECTION ────────────────── */}
                 {isExpanded && (
                   <div style={styles.streamsSection}>
-
                     {loadingStreams ? (
-                      <div style={styles.loadingText}>
-                        Loading streams...
-                      </div>
+                      <div style={styles.loadingText}>Loading streams…</div>
                     ) : streams.length === 0 ? (
                       <div style={styles.noStreams}>
                         No streams yet. Click "+ Add Stream" to create one.
@@ -334,11 +288,10 @@ export default function Classes() {
                         ))}
                       </div>
                     )}
-
                   </div>
                 )}
 
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -346,66 +299,43 @@ export default function Classes() {
 
       {/* ── ADD CLASS MODAL ──────────────────────────── */}
       {modal === 'addClass' && (
-        <Modal
-          title="Add New Class"
-          onClose={closeModal}
-        >
+        <Modal title="Add New Class" onClose={closeModal}>
           <form onSubmit={handleAddClass}>
-            {error && <div style={styles.modalError}>{error}</div>}
+            {error && <Banner type="error">{error}</Banner>}
 
             <FormField label="Class Name">
-              <input
-                style={styles.input}
+              <Input
                 placeholder="e.g. Grade 7"
                 value={classForm.className}
-                onChange={e => setClassForm({
-                  ...classForm,
-                  className: e.target.value,
-                })}
+                onChange={e => setClassForm({ ...classForm, className: e.target.value })}
                 required
               />
             </FormField>
 
             <FormField label="Grade Level">
-              <input
-                style={styles.input}
-                type="number"
-                min="1"
-                max="12"
+              <Input
+                type="number" min="1" max="12"
                 placeholder="e.g. 7"
                 value={classForm.gradeLevel}
-                onChange={e => setClassForm({
-                  ...classForm,
-                  gradeLevel: e.target.value,
-                })}
+                onChange={e => setClassForm({ ...classForm, gradeLevel: e.target.value })}
                 required
               />
             </FormField>
 
             <FormField label="Academic Year">
-              <input
-                style={styles.input}
+              <Input
                 type="number"
                 value={classForm.academicYear}
-                onChange={e => setClassForm({
-                  ...classForm,
-                  academicYear: e.target.value,
-                })}
+                onChange={e => setClassForm({ ...classForm, academicYear: e.target.value })}
                 required
               />
             </FormField>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelBtn}
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
-              <button type="submit" style={styles.primaryBtn}>
-                Create Class
-              </button>
+              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create Class'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -413,52 +343,33 @@ export default function Classes() {
 
       {/* ── ADD STREAM MODAL ─────────────────────────── */}
       {modal === 'addStream' && (
-        <Modal
-          title={`Add Stream to ${expandedClass?.className}`}
-          onClose={closeModal}
-        >
+        <Modal title={`Add Stream to ${expandedClass?.className}`} onClose={closeModal}>
           <form onSubmit={handleAddStream}>
-            {error && <div style={styles.modalError}>{error}</div>}
+            {error && <Banner type="error">{error}</Banner>}
 
             <FormField label="Stream Name">
-              <input
-                style={styles.input}
+              <Input
                 placeholder="e.g. 7A"
                 value={streamForm.streamName}
-                onChange={e => setStreamForm({
-                  ...streamForm,
-                  streamName: e.target.value,
-                })}
+                onChange={e => setStreamForm({ ...streamForm, streamName: e.target.value })}
                 required
               />
             </FormField>
 
             <FormField label="Capacity (number of students)">
-              <input
-                style={styles.input}
-                type="number"
-                min="1"
-                max="100"
+              <Input
+                type="number" min="1" max="100"
                 value={streamForm.capacity}
-                onChange={e => setStreamForm({
-                  ...streamForm,
-                  capacity: e.target.value,
-                })}
+                onChange={e => setStreamForm({ ...streamForm, capacity: e.target.value })}
                 required
               />
             </FormField>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelBtn}
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
-              <button type="submit" style={styles.primaryBtn}>
-                Create Stream
-              </button>
+              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create Stream'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -466,58 +377,38 @@ export default function Classes() {
 
       {/* ── ASSIGN TEACHER MODAL ─────────────────────── */}
       {modal === 'assignTeacher' && (
-        <Modal
-          title={`Assign Teacher to ${selectedStream?.streamName}`}
-          onClose={closeModal}
-        >
-          {error && <div style={styles.modalError}>{error}</div>}
+        <Modal title={`Assign Teacher to ${selectedStream?.streamName}`} onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
 
           {teachers.length === 0 ? (
-            // No teachers in the system yet
             <div style={styles.noTeachersMsg}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                No teachers available
-              </div>
-              <div style={{ color: '#888', fontSize: 13 }}>
-                Go to the Users page to add teachers first,
-                then come back to assign one.
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>No teachers available</div>
+              <div style={{ color: tokens.colors.textMuted, fontSize: 13 }}>
+                Go to the Users page to add teachers first, then come back to assign one.
               </div>
             </div>
           ) : (
             <>
               <p style={styles.assignNote}>
-                Select a teacher to assign to stream{' '}
-                <strong>{selectedStream?.streamName}</strong>:
+                Select a teacher to assign to stream <strong>{selectedStream?.streamName}</strong>:
               </p>
 
-              {/* Teacher list — radio button style */}
               <div style={styles.teacherList}>
                 {teachers.map((teacher) => (
                   <div
                     key={teacher.userId}
                     style={{
                       ...styles.teacherItem,
-                      ...(selectedTeacherId === String(teacher.userId)
-                        ? styles.teacherItemSelected
-                        : {}),
+                      ...(selectedTeacherId === String(teacher.userId) ? styles.teacherItemSelected : {}),
                     }}
-                    onClick={() =>
-                      setSelectedTeacherId(String(teacher.userId))
-                    }
+                    onClick={() => setSelectedTeacherId(String(teacher.userId))}
                   >
-                    <div style={styles.teacherAvatar}>
-                      {teacher.fullName.charAt(0)}
-                    </div>
+                    <Avatar name={teacher.fullName} size={36} background={tokens.colors.primary} />
                     <div>
-                      <div style={styles.teacherName}>
-                        {teacher.fullName}
-                      </div>
-                      <div style={styles.teacherUsername}>
-                        @{teacher.userName}
-                      </div>
+                      <div style={styles.teacherName}>{teacher.fullName}</div>
+                      <div style={styles.teacherUsername}>@{teacher.userName}</div>
                     </div>
-                    {/* Checkmark when selected */}
                     {selectedTeacherId === String(teacher.userId) && (
                       <span style={styles.checkmark}>✓</span>
                     )}
@@ -526,23 +417,14 @@ export default function Classes() {
               </div>
 
               <div style={styles.modalActions}>
-                <button
-                  type="button"
-                  style={styles.cancelBtn}
-                  onClick={closeModal}
-                >
-                  Cancel
-                </button>
-                <button
-                  style={{
-                    ...styles.primaryBtn,
-                    opacity: selectedTeacherId ? 1 : 0.5,
-                  }}
+                <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+                <Button
+                  variant="primary"
                   onClick={handleAssignTeacher}
-                  disabled={!selectedTeacherId}
+                  disabled={!selectedTeacherId || submitting}
                 >
-                  Assign Teacher
-                </button>
+                  {submitting ? 'Assigning…' : 'Assign Teacher'}
+                </Button>
               </div>
             </>
           )}
@@ -554,86 +436,32 @@ export default function Classes() {
 }
 
 // ── STREAM CARD ───────────────────────────────────────────────────────
-// Shows one stream with its teacher status
 function StreamCard({ stream, onAssignTeacher }) {
   const hasTeacher = !!stream.teacher;
 
   return (
     <div style={streamStyles.card}>
+      <div style={streamStyles.streamName}>{stream.streamName}</div>
 
-      {/* Stream name */}
-      <div style={streamStyles.streamName}>
-        {stream.streamName}
-      </div>
-
-      {/* Teacher status indicator */}
       <div style={streamStyles.teacherRow}>
         <span style={{
           ...streamStyles.dot,
-          background: hasTeacher ? '#48bb78' : '#cbd5e0',
+          background: hasTeacher ? tokens.colors.success : tokens.colors.borderStrong,
         }} />
         <span style={streamStyles.teacherText}>
-          {hasTeacher
-            ? stream.teacher.fullName
-            : 'No teacher assigned'}
+          {hasTeacher ? stream.teacher.fullName : 'No teacher assigned'}
         </span>
       </div>
 
-      {/* Capacity */}
-      <div style={streamStyles.capacity}>
-        Capacity: {stream.capacity} students
-      </div>
+      <div style={streamStyles.capacity}>Capacity: {stream.capacity} students</div>
 
-      {/* Assign Teacher button */}
-      <button
-        style={streamStyles.assignBtn}
+      <Button
+        variant="secondary" size="sm"
+        style={{ width: '100%' }}
         onClick={() => onAssignTeacher(stream)}
       >
         {hasTeacher ? '↩ Reassign Teacher' : '+ Assign Teacher'}
-      </button>
-
-    </div>
-  );
-}
-
-// ── MODAL COMPONENT ───────────────────────────────────────────────────
-function Modal({ title, onClose, children }) {
-  return (
-    // Backdrop — clicking outside closes modal
-    <div style={modalStyles.backdrop} onClick={onClose}>
-      <div
-        style={modalStyles.box}
-        // Stop click from reaching backdrop
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={modalStyles.header}>
-          <h3 style={modalStyles.title}>{title}</h3>
-          <button style={modalStyles.closeBtn} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <div style={modalStyles.body}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── FORM FIELD WRAPPER ────────────────────────────────────────────────
-function FormField({ label, children }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label style={{
-        display: 'block',
-        fontSize: 13,
-        fontWeight: 600,
-        color: '#333',
-        marginBottom: 6,
-      }}>
-        {label}
-      </label>
-      {children}
+      </Button>
     </div>
   );
 }
@@ -641,348 +469,71 @@ function FormField({ label, children }) {
 // ── STYLES ────────────────────────────────────────────────────────────
 const styles = {
   pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'flex-start', marginBottom: tokens.spacing.lg, flexWrap: 'wrap', gap: 12,
   },
-  pageTitle: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 700,
-    color: '#1a1a2e',
-  },
-  pageSub: {
-    margin: '4px 0 0',
-    color: '#666',
-    fontSize: 14,
-  },
-  successMsg: {
-    background: '#f0fff4',
-    border: '1px solid #c6f6d5',
-    borderRadius: 8,
-    padding: '10px 16px',
-    color: '#276749',
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  errorMsg: {
-    background: '#fff5f5',
-    border: '1px solid #fed7d7',
-    borderRadius: 8,
-    padding: '10px 16px',
-    color: '#c53030',
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  loadingText: {
-    color: '#888',
-    padding: 20,
-    textAlign: 'center',
-    fontSize: 14,
-  },
-  emptyState: {
-    background: '#fff',
-    borderRadius: 12,
-    padding: 60,
-    textAlign: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#1a1a2e',
-    marginBottom: 6,
-  },
-  emptySub: { color: '#888', fontSize: 14 },
+  pageTitle: { margin: 0, fontSize: 24, fontWeight: 700, color: tokens.colors.textPrimary },
+  pageSub: { margin: '4px 0 0', color: tokens.colors.textSecondary, fontSize: 14 },
+  loadingText: { color: tokens.colors.textMuted, padding: 20, textAlign: 'center', fontSize: 14 },
 
-  classesList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-  classCard: {
-    background: '#ffffff',
-    borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    overflow: 'hidden',
-  },
+  classesList: { display: 'flex', flexDirection: 'column', gap: 12 },
   classRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 20px',
-    cursor: 'pointer',
-    transition: 'background 0.15s',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 20px', cursor: 'pointer',
   },
-  classLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-  },
-  arrow: {
-    color: '#888',
-    fontSize: 12,
-    width: 16,
-  },
+  classLeft: { display: 'flex', alignItems: 'center', gap: 14 },
+  arrow: { color: tokens.colors.textMuted, fontSize: 12, width: 16 },
   classIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    background: '#1a1a2e',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    fontSize: 16,
-    flexShrink: 0,
+    width: 40, height: 40, borderRadius: tokens.radius.sm,
+    background: tokens.colors.primary, color: '#fff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontWeight: 700, fontSize: 16, flexShrink: 0,
   },
-  className: {
-    fontWeight: 700,
-    fontSize: 16,
-    color: '#1a1a2e',
-  },
-  classMeta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
+  className: { fontWeight: 700, fontSize: 16, color: tokens.colors.textPrimary },
+  classMeta: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 2 },
 
   streamsSection: {
-    borderTop: '1px solid #f0f2f5',
-    padding: '16px 20px',
-    background: '#fafbfc',
+    borderTop: `1px solid ${tokens.colors.border}`,
+    padding: '18px 20px', background: tokens.colors.surface,
   },
-  noStreams: {
-    color: '#888',
-    fontSize: 13,
-    textAlign: 'center',
-    padding: '20px 0',
-  },
+  noStreams: { color: tokens.colors.textMuted, fontSize: 13, textAlign: 'center', padding: '20px 0' },
   streamsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: 12,
+    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12,
   },
 
-  primaryBtn: {
-    background: '#1a1a2e',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    padding: '9px 18px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  secondaryBtn: {
-    background: '#f0f2f5',
-    color: '#333',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 8,
-    padding: '7px 14px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  cancelBtn: {
-    background: '#f0f2f5',
-    color: '#333',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 8,
-    padding: '9px 18px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  input: {
-    width: '100%',
-    padding: '9px 12px',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 8,
-    fontSize: 14,
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  modalError: {
-    background: '#fff5f5',
-    border: '1px solid #fed7d7',
-    borderRadius: 8,
-    padding: '10px 14px',
-    color: '#c53030',
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20,
-  },
+  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 
-  assignNote: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 14,
-    lineHeight: 1.5,
-  },
+  assignNote: { fontSize: 14, color: tokens.colors.textSecondary, marginBottom: 14, lineHeight: 1.5 },
   teacherList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    maxHeight: 280,
-    overflowY: 'auto',
-    marginBottom: 8,
+    display: 'flex', flexDirection: 'column', gap: 8,
+    maxHeight: 280, overflowY: 'auto', marginBottom: 8,
   },
   teacherItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '10px 14px',
-    borderRadius: 8,
-    border: '1.5px solid #e0e0e0',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '10px 14px', borderRadius: tokens.radius.sm,
+    border: `1.5px solid ${tokens.colors.border}`,
+    cursor: 'pointer', transition: tokens.transition,
   },
   teacherItemSelected: {
-    border: '1.5px solid #1a1a2e',
-    background: '#f7f8fc',
+    border: `1.5px solid ${tokens.colors.primary}`,
+    background: tokens.colors.surface,
   },
-  teacherAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: '50%',
-    background: '#1a1a2e',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    fontSize: 15,
-    flexShrink: 0,
-  },
-  teacherName: {
-    fontWeight: 600,
-    fontSize: 14,
-    color: '#1a1a2e',
-  },
-  teacherUsername: {
-    fontSize: 12,
-    color: '#888',
-  },
-  checkmark: {
-    marginLeft: 'auto',
-    color: '#276749',
-    fontWeight: 700,
-    fontSize: 16,
-  },
-  noTeachersMsg: {
-    textAlign: 'center',
-    padding: '24px 0',
-    color: '#555',
-    fontSize: 14,
-  },
+  teacherName: { fontWeight: 600, fontSize: 14, color: tokens.colors.textPrimary },
+  teacherUsername: { fontSize: 12, color: tokens.colors.textMuted },
+  checkmark: { marginLeft: 'auto', color: tokens.colors.success, fontWeight: 700, fontSize: 16 },
+  noTeachersMsg: { textAlign: 'center', padding: '24px 0', color: tokens.colors.textSecondary, fontSize: 14 },
 };
 
 const streamStyles = {
   card: {
-    background: '#ffffff',
-    border: '1.5px solid #e8ecf0',
-    borderRadius: 10,
-    padding: '14px 16px',
+    background: tokens.colors.card,
+    border: `1.5px solid ${tokens.colors.border}`,
+    borderRadius: tokens.radius.md,
+    padding: '16px 18px',
   },
-  streamName: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#1a1a2e',
-    marginBottom: 8,
-  },
-  teacherRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  teacherText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  capacity: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 12,
-  },
-  assignBtn: {
-    width: '100%',
-    padding: '7px',
-    background: '#f0f2f5',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 7,
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#333',
-    cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-};
-
-const modalStyles = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.45)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: 20,
-  },
-  box: {
-    background: '#fff',
-    borderRadius: 14,
-    width: '100%',
-    maxWidth: 460,
-    maxHeight: '90vh',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '18px 22px',
-    borderBottom: '1px solid #f0f2f5',
-  },
-  title: {
-    margin: 0,
-    fontSize: 17,
-    fontWeight: 700,
-    color: '#1a1a2e',
-  },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    fontSize: 16,
-    cursor: 'pointer',
-    color: '#888',
-    padding: 4,
-  },
-  body: {
-    padding: '20px 22px',
-    overflowY: 'auto',
-  },
+  streamName: { fontSize: 22, fontWeight: 700, color: tokens.colors.textPrimary, marginBottom: 8 },
+  teacherRow: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 },
+  dot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
+  teacherText: { fontSize: 13, color: tokens.colors.textSecondary },
+  capacity: { fontSize: 12, color: tokens.colors.textMuted, marginBottom: 12 },
 };

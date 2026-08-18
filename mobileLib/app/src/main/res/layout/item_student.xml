@@ -4,26 +4,30 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="1dp">
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1.5dp"
+    app:cardBackgroundColor="@color/card">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="14dp"
+        android:padding="12dp"
         android:gravity="center_vertical">
 
         <!-- Avatar circle -->
         <TextView
             android:id="@+id/tvAvatar"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:gravity="center"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_inverse"
             android:background="@drawable/avatar_background"/>
 
         <!-- Student info -->
@@ -39,9 +43,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Student Name"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
-                android:textColor="#1A1A2E"/>
+                android:textColor="@color/text_primary"/>
 
             <TextView
                 android:id="@+id/tvAdmission"
@@ -49,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:text="ADM001"
                 android:textSize="12sp"
-                android:textColor="#888888"
+                android:textColor="@color/text_muted"
                 android:layout_marginTop="2dp"/>
 
         </LinearLayout>
@@ -61,12 +65,24 @@
             android:layout_height="wrap_content"
             android:text="Active"
             android:textSize="11sp"
-            android:textColor="#276749"
-            android:background="#F0FFF4"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"/>
+            android:textStyle="bold"
+            android:textColor="@color/success"
+            android:background="@drawable/bg_badge_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"/>
+
+        <!-- Tap affordance — row is clickable (select for assignment,
+             or view books held, depending on which screen shows it) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="›"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_muted"
+            android:layout_marginStart="8dp"/>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

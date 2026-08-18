@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F0F2F5"
+    android:background="@drawable/bg_gradient_header"
     android:fillViewport="true">
 
     <LinearLayout
@@ -11,8 +12,8 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="24dp"
-        android:minHeight="600dp">
+        android:padding="28dp"
+        android:minHeight="640dp">
 
         <!-- Logo/Icon area -->
         <LinearLayout
@@ -20,31 +21,33 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginBottom="40dp">
+            android:layout_marginBottom="36dp">
 
             <TextView
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
                 android:text="📚"
                 android:textSize="48sp"
                 android:gravity="center"
-                android:layout_marginBottom="16dp"/>
+                android:background="@drawable/bg_pill_translucent_white"
+                android:layout_marginBottom="18dp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="School Library"
-                android:textSize="26sp"
+                android:textSize="28sp"
                 android:textStyle="bold"
-                android:textColor="#1A1A2E"/>
+                android:textColor="@color/text_inverse"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Teacher Portal"
-                android:textSize="14sp"
-                android:textColor="#888888"
-                android:layout_marginTop="4dp"/>
+                android:text="TEACHER PORTAL"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:textColor="@color/text_inverse_muted"
+                android:layout_marginTop="6dp"/>
 
         </LinearLayout>
 
@@ -52,15 +55,24 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardCornerRadius="20dp"
+            app:cardElevation="10dp"
+            app:cardBackgroundColor="@color/card">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:padding="32dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sign in to your account"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="20dp"/>
 
                 <!-- Username -->
                 <TextView
@@ -69,20 +81,21 @@
                     android:text="Username"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:textColor="#333333"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="6dp"/>
 
                 <EditText
                     android:id="@+id/etUsername"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:hint="Enter your username"
                     android:inputType="text"
                     android:background="@drawable/input_background"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
                     android:textSize="14sp"
-                    android:textColor="#333333"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_muted"
                     android:layout_marginBottom="16dp"/>
 
                 <!-- Password -->
@@ -92,21 +105,22 @@
                     android:text="Password"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:textColor="#333333"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="6dp"/>
 
                 <EditText
                     android:id="@+id/etPassword"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:hint="Enter your password"
                     android:inputType="textPassword"
                     android:background="@drawable/input_background"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
                     android:textSize="14sp"
-                    android:textColor="#333333"
-                    android:layout_marginBottom="8dp"/>
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_muted"
+                    android:layout_marginBottom="10dp"/>
 
                 <!-- Error message -->
                 <TextView
@@ -115,23 +129,26 @@
                     android:layout_height="wrap_content"
                     android:text=""
                     android:textSize="13sp"
-                    android:textColor="#C53030"
-                    android:background="#FFF5F5"
-                    android:padding="10dp"
+                    android:textColor="@color/danger"
+                    android:background="@color/danger_light"
+                    android:padding="12dp"
+                    android:drawablePadding="8dp"
+                    android:gravity="center_vertical"
                     android:visibility="gone"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="14dp"/>
 
                 <!-- Login button -->
                 <Button
                     android:id="@+id/btnLogin"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:text="Sign In"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#1A1A2E"
-                    android:layout_marginTop="8dp"/>
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_inverse"
+                    android:backgroundTint="@color/accent"
+                    android:layout_marginTop="6dp"/>
 
                 <!-- Loading indicator -->
                 <ProgressBar
@@ -139,8 +156,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
+                    android:indeterminateTint="@color/primary"
                     android:visibility="gone"
-                    android:layout_marginTop="12dp"/>
+                    android:layout_marginTop="14dp"/>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>

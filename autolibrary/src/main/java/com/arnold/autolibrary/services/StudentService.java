@@ -47,13 +47,13 @@ public class StudentService {
     }
     @Transactional
     public Student deactivateStudent(int studentId){
-        Student student = studentRepo.getById(studentId);
+        Student student = getStudentById(studentId);
         student.setActive(false);
         return studentRepo.save(student);
     }
     @Transactional
     public Student activateStudent(int studentId){
-        Student student = studentRepo.getById(studentId);
+        Student student = getStudentById(studentId);
         student.setActive(true);
         return studentRepo.save(student);
     }

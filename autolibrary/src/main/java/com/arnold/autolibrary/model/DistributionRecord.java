@@ -46,8 +46,8 @@ public class DistributionRecord {
         this.status = DistributionStatus.DISTRIBUTED;
     }
 
-    public int getDistributionID() { return distributionId; }
-    public void setDistributionID(int distributionId) { this.distributionId = distributionId; }
+    public int getDistributionId() { return distributionId; }
+    public void setDistributionId(int distributionId) { this.distributionId = distributionId; }
 
     public BookCopy getBookCopy() { return bookCopy; }
     public void setBookCopy(BookCopy bookCopy) { this.bookCopy = bookCopy; }

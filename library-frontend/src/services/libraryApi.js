@@ -36,9 +36,10 @@ export const userService = {
 
 // ── STUDENTS ──────────────────────────────────────────
 export const studentService = {
+  getAll: () => api.get('/students'),
   getByStream: (streamId) =>
     api.get(`/students/stream/${streamId}`),
-  
+
   getByAdmission: (admNo) =>
     api.get(`/students/admission/${admNo}`),
   create: (data, streamId) =>

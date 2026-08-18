@@ -15,6 +15,12 @@ public class SchoolClassService {
         SchoolClass existing = schoolClassRepository.findByGradeLevelAndAcademicYear(
                 schoolClass.getGradeLevel(),schoolClass.getAcademicYear()
         );
+        if(existing != null){
+            throw new RuntimeException(
+                "A class already exists for grade "+ schoolClass.getGradeLevel()
+                +" in academic year "+ schoolClass.getAcademicYear()
+            );
+        }
         return schoolClassRepository.save(schoolClass);
 
     }

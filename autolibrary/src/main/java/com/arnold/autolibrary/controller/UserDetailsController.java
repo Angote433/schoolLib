@@ -22,6 +22,8 @@ public class UserDetailsController {
 
     @PostMapping
     public ResponseEntity<?>createUser(@RequestBody UserDetails userDetails){
+        System.out.println(userDetails.getUserName());
+        System.out.println(userDetails.getStream());
         try{
             UserDetails created = userdetailsService.createUser(userDetails);
             UserResponse response = new UserResponse(created.getUserId(), created.getUserName(), created.getRole());

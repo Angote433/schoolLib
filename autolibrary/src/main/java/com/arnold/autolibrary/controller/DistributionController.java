@@ -92,6 +92,16 @@ public class DistributionController {
     }
 
     /*
+    Mobile app: Home "Books Out" stat card and the "Books Out" tab —
+    every distribution record for the teacher's stream in a given year.
+     */
+    @GetMapping("/stream/{streamId}/year/{year}")
+    public ResponseEntity<List<DistributionRecord>>getStreamDistributions(
+            @PathVariable int streamId, @PathVariable int year){
+        return ResponseEntity.ok(distService.getByStreamAndYear(streamId, year));
+    }
+
+    /*
     Return flow: teacher scans ISBN on the book's back cover.
     Returns the table of students in their stream currently holding that title.
      */

@@ -140,6 +140,16 @@ public class DistributionService {
     }
 
     /*
+    Mobile app: Home "Books Out" stat and the "Books Out" tab both need
+    every distribution record for the teacher's own stream in a given
+    academic year, so the count/list can be filtered to DISTRIBUTED
+    client-side.
+     */
+    public List<DistributionRecord> getByStreamAndYear(int streamId, int academicYear){
+        return distRepo.findByStudentStreamStreamIdAndAcademicYear(streamId, academicYear);
+    }
+
+    /*
     Return flow: teacher scans the ISBN on the book's back cover.
     Shows every student in their stream currently holding a copy of that title
     so the teacher can tick off the one returning it.

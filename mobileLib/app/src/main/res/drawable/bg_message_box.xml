@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Result/error message box. Placeholder fill — recolored at runtime
+     via (background as GradientDrawable).setColor(...) so the rounded
+     corners survive the color swap between success/error states. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/success_light"/>
+    <corners android:radius="8dp"/>
+</shape>

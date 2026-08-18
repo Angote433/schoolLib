@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { userService, streamService } from '../services/libraryApi';
+import { tokens } from '../styles/tokens';
+import {
+  Modal, FormField, Input, Button, Banner, EmptyState,
+  Tabs, Card, Avatar,
+} from '../components/SharedComponents';
 
 export default function Users() {
 
@@ -56,32 +61,18 @@ export default function Users() {
   };
 
   // ── FILTER LOGIC ──────────────────────────────────────
-  // Filters run locally on the already loaded data
-  // No extra API calls needed
   const filteredUsers = users.filter((user) => {
-    // Role filter
-    const roleMatch =
-      roleFilter === 'ALL' || user.role === roleFilter;
-
-    // Search filter — case insensitive name or username match
+    const roleMatch = roleFilter === 'ALL' || user.role === roleFilter;
     const searchMatch =
       searchText === '' ||
-      user.fullName.toLowerCase().includes(
-        searchText.toLowerCase()
-      ) ||
-      user.userName.toLowerCase().includes(
-        searchText.toLowerCase()
-      );
-
+      user.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+      user.userName.toLowerCase().includes(searchText.toLowerCase());
     return roleMatch && searchMatch;
   });
 
-  // Count helpers for the filter tabs
   const countAll = users.length;
   const countTeachers = users.filter(u => u.role === 'TEACHER').length;
-  const countLibrarians = users.filter(
-    u => u.role === 'LIBRARIAN'
-  ).length;
+  const countLibrarians = users.filter(u => u.role === 'LIBRARIAN').length;
 
   // ── CREATE USER ───────────────────────────────────────
   const handleCreate = async (e) => {
@@ -91,21 +82,12 @@ export default function Users() {
 
     try {
       await userService.create(form);
-
       showSuccess(
         `${form.role === 'TEACHER' ? 'Teacher' : 'Librarian'} account created for ${form.fullName}`
       );
       closeModal();
       loadData();
-
-      // Reset form
-      setForm({
-        fullName: '',
-        userName: '',
-        passwordHash: '',
-        role: 'TEACHER',
-      });
-
+      setForm({ fullName: '', userName: '', passwordHash: '', role: 'TEACHER' });
     } catch (err) {
       setError(err.response?.data || 'Failed to create user');
     } finally {
@@ -115,31 +97,33 @@ export default function Users() {
 
   // ── DEACTIVATE ────────────────────────────────────────
   const handleDeactivate = async () => {
+    setSubmitting(true);
     try {
       await userService.deactivate(selectedUser.userId);
-      showSuccess(
-        `${selectedUser.fullName}'s account has been deactivated`
-      );
+      showSuccess(`${selectedUser.fullName}'s account has been deactivated`);
       closeModal();
       loadData();
     } catch (err) {
       setError(err.response?.data || 'Failed to deactivate user');
       closeModal();
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // ── ACTIVATE ──────────────────────────────────────────
   const handleActivate = async () => {
+    setSubmitting(true);
     try {
       await userService.activate(selectedUser.userId);
-      showSuccess(
-        `${selectedUser.fullName}'s account has been activated`
-      );
+      showSuccess(`${selectedUser.fullName}'s account has been activated`);
       closeModal();
       loadData();
     } catch (err) {
       setError(err.response?.data || 'Failed to activate user');
       closeModal();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -155,91 +139,60 @@ export default function Users() {
     setError('');
   };
 
-  // Find stream name for a teacher
   const getTeacherStream = (user) => {
     if (user.role !== 'TEACHER') return null;
-    const stream = streams.find(
-      s => s.teacher?.userId === user.userId
-    );
+    const stream = streams.find(s => s.teacher?.userId === user.userId);
     return stream ? stream.streamName : null;
   };
 
   // ── RENDER ────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: 'Segoe UI, sans-serif' }}>
+    <div>
 
       {/* ── PAGE HEADER ──────────────────────────────── */}
       <div style={styles.pageHeader}>
         <div>
           <h1 style={styles.pageTitle}>Users</h1>
-          <p style={styles.pageSub}>
-            Manage librarian and teacher accounts
-          </p>
+          <p style={styles.pageSub}>Manage librarian and teacher accounts</p>
         </div>
-        <button
-          style={styles.primaryBtn}
-          onClick={() => setModal('createUser')}
-        >
+        <Button variant="primary" onClick={() => setModal('createUser')}>
           + Create User
-        </button>
+        </Button>
       </div>
 
       {/* ── FEEDBACK ─────────────────────────────────── */}
-      {success && (
-        <div style={styles.successMsg}>✅ {success}</div>
-      )}
-      {error && !modal && (
-        <div style={styles.errorMsg}>⚠️ {error}</div>
-      )}
+      {success && <Banner type="success">{success}</Banner>}
+      {error && !modal && <Banner type="error">{error}</Banner>}
 
       {/* ── FILTER TABS + SEARCH ─────────────────────── */}
       <div style={styles.controls}>
-
-        {/* Role filter tabs */}
-        <div style={styles.tabs}>
-          {[
-            { key: 'ALL',       label: `All (${countAll})` },
-            { key: 'TEACHER',   label: `Teachers (${countTeachers})` },
+        <Tabs
+          variant="pill"
+          items={[
+            { key: 'ALL', label: `All (${countAll})` },
+            { key: 'TEACHER', label: `Teachers (${countTeachers})` },
             { key: 'LIBRARIAN', label: `Librarians (${countLibrarians})` },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              style={{
-                ...styles.tab,
-                ...(roleFilter === tab.key ? styles.tabActive : {}),
-              }}
-              onClick={() => setRoleFilter(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search box */}
-        <input
+          ]}
+          active={roleFilter}
+          onChange={setRoleFilter}
+        />
+        <Input
           style={styles.searchInput}
           placeholder="🔍  Search by name or username..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
-
       </div>
 
       {/* ── USERS GRID ───────────────────────────────── */}
       {loading ? (
-        <div style={styles.loadingText}>Loading users...</div>
+        <div style={styles.loadingText}>Loading users…</div>
       ) : filteredUsers.length === 0 ? (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>👤</div>
-          <div style={styles.emptyTitle}>
-            {searchText
-              ? 'No users match your search'
-              : 'No users found'}
-          </div>
-          <div style={styles.emptySub}>
-            {!searchText && 'Click "Create User" to add the first user'}
-          </div>
-        </div>
+        <EmptyState
+          icon="👤"
+          title={searchText ? 'No users match your search' : 'No users found'}
+          subtitle={!searchText && 'Click "Create User" to add the first user'}
+        />
       ) : (
         <div style={styles.usersGrid}>
           {filteredUsers.map((user) => (
@@ -264,123 +217,77 @@ export default function Users() {
       {modal === 'createUser' && (
         <Modal title="Create New User" onClose={closeModal}>
           <form onSubmit={handleCreate}>
-            {error && (
-              <div style={styles.modalError}>{error}</div>
-            )}
+            {error && <Banner type="error">{error}</Banner>}
 
             <FormField label="Full Name">
-              <input
-                style={styles.input}
+              <Input
                 placeholder="e.g. John Kamau"
                 value={form.fullName}
-                onChange={e => setForm({
-                  ...form, fullName: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, fullName: e.target.value })}
                 required
               />
             </FormField>
 
-            <FormField label="Username">
-              <input
-                style={styles.input}
+            <FormField label="Username" hint="This is what they use to log in">
+              <Input
                 placeholder="e.g. jkamau"
                 value={form.userName}
-                onChange={e => setForm({
-                  ...form, userName: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, userName: e.target.value })}
                 required
               />
-              <span style={styles.inputHint}>
-                This is what they use to log in
-              </span>
             </FormField>
 
-            <FormField label="Password">
-              <input
-                style={styles.input}
+            <FormField label="Password" hint="Share this with the user so they can log in">
+              <Input
                 type="password"
                 placeholder="Set initial password"
                 value={form.passwordHash}
-                onChange={e => setForm({
-                  ...form, passwordHash: e.target.value,
-                })}
+                onChange={e => setForm({ ...form, passwordHash: e.target.value })}
                 required
               />
-              <span style={styles.inputHint}>
-                Share this with the user so they can log in
-              </span>
             </FormField>
 
             <FormField label="Role">
               <div style={styles.roleSelector}>
-                {/* Teacher option */}
                 <div
                   style={{
                     ...styles.roleOption,
-                    ...(form.role === 'TEACHER'
-                      ? styles.roleOptionSelected
-                      : {}),
+                    ...(form.role === 'TEACHER' ? styles.roleOptionSelected : {}),
                   }}
-                  onClick={() => setForm({
-                    ...form, role: 'TEACHER',
-                  })}
+                  onClick={() => setForm({ ...form, role: 'TEACHER' })}
                 >
                   <span style={styles.roleOptionIcon}>🎓</span>
                   <div>
                     <div style={styles.roleOptionName}>Teacher</div>
-                    <div style={styles.roleOptionDesc}>
-                      Can manage students and scan books
-                    </div>
+                    <div style={styles.roleOptionDesc}>Can manage students and scan books</div>
                   </div>
-                  {form.role === 'TEACHER' && (
-                    <span style={styles.checkmark}>✓</span>
-                  )}
+                  {form.role === 'TEACHER' && <span style={styles.checkmark}>✓</span>}
                 </div>
 
-                {/* Librarian option */}
                 <div
                   style={{
                     ...styles.roleOption,
-                    ...(form.role === 'LIBRARIAN'
-                      ? styles.roleOptionSelected
-                      : {}),
+                    ...(form.role === 'LIBRARIAN' ? styles.roleOptionSelected : {}),
                   }}
-                  onClick={() => setForm({
-                    ...form, role: 'LIBRARIAN',
-                  })}
+                  onClick={() => setForm({ ...form, role: 'LIBRARIAN' })}
                 >
                   <span style={styles.roleOptionIcon}>📚</span>
                   <div>
                     <div style={styles.roleOptionName}>Librarian</div>
-                    <div style={styles.roleOptionDesc}>
-                      Full access to all features
-                    </div>
+                    <div style={styles.roleOptionDesc}>Full access to all features</div>
                   </div>
-                  {form.role === 'LIBRARIAN' && (
-                    <span style={styles.checkmark}>✓</span>
-                  )}
+                  {form.role === 'LIBRARIAN' && <span style={styles.checkmark}>✓</span>}
                 </div>
               </div>
             </FormField>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelBtn}
-                onClick={closeModal}
-              >
+              <Button type="button" variant="secondary" onClick={closeModal}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                style={{
-                  ...styles.primaryBtn,
-                  opacity: submitting ? 0.7 : 1,
-                }}
-                disabled={submitting}
-              >
-                {submitting ? 'Creating...' : 'Create User'}
-              </button>
+              </Button>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create User'}
+              </Button>
             </div>
           </form>
         </Modal>
@@ -389,6 +296,7 @@ export default function Users() {
       {/* ── CONFIRM DEACTIVATE MODAL ─────────────────── */}
       {modal === 'confirmDeactivate' && (
         <Modal title="Deactivate Account" onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
             <div style={styles.confirmIcon}>⚠️</div>
             <p style={styles.confirmText}>
@@ -401,18 +309,10 @@ export default function Users() {
             </p>
           </div>
           <div style={styles.modalActions}>
-            <button
-              style={styles.cancelBtn}
-              onClick={closeModal}
-            >
-              Cancel
-            </button>
-            <button
-              style={styles.dangerBtn}
-              onClick={handleDeactivate}
-            >
-              Yes, Deactivate
-            </button>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeactivate} disabled={submitting}>
+              {submitting ? 'Deactivating…' : 'Yes, Deactivate'}
+            </Button>
           </div>
         </Modal>
       )}
@@ -420,29 +320,21 @@ export default function Users() {
       {/* ── CONFIRM ACTIVATE MODAL ───────────────────── */}
       {modal === 'confirmActivate' && (
         <Modal title="Activate Account" onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
             <div style={styles.confirmIcon}>✅</div>
             <p style={styles.confirmText}>
-              Reactivate{' '}
-              <strong>{selectedUser?.fullName}</strong>'s account?
+              Reactivate <strong>{selectedUser?.fullName}</strong>'s account?
             </p>
             <p style={styles.confirmSub}>
               They will be able to log in again immediately.
             </p>
           </div>
           <div style={styles.modalActions}>
-            <button
-              style={styles.cancelBtn}
-              onClick={closeModal}
-            >
-              Cancel
-            </button>
-            <button
-              style={styles.primaryBtn}
-              onClick={handleActivate}
-            >
-              Yes, Activate
-            </button>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="primary" onClick={handleActivate} disabled={submitting}>
+              {submitting ? 'Activating…' : 'Yes, Activate'}
+            </Button>
           </div>
         </Modal>
       )}
@@ -457,365 +349,114 @@ function UserCard({ user, streamName, onDeactivate, onActivate }) {
   const isActive = user.active;
 
   return (
-    <div style={{
-      ...cardStyles.card,
-      opacity: isActive ? 1 : 0.65,
-    }}>
-
-      {/* Top row — avatar + status badge */}
+    <Card style={{ opacity: isActive ? 1 : 0.65 }} hoverable>
       <div style={cardStyles.top}>
-        <div style={{
-          ...cardStyles.avatar,
-          background: isLibrarian ? '#1a1a2e' : '#2c7a4b',
-        }}>
-          {user.fullName.charAt(0).toUpperCase()}
-        </div>
-
+        <Avatar
+          name={user.fullName}
+          size={44}
+          background={isLibrarian ? tokens.colors.primary : tokens.colors.accent}
+        />
         <div style={cardStyles.badges}>
-          {/* Role badge */}
           <span style={{
             ...cardStyles.roleBadge,
-            background: isLibrarian ? '#ebf4ff' : '#f0fff4',
-            color: isLibrarian ? '#2b6cb0' : '#276749',
+            background: isLibrarian ? tokens.colors.infoLight : tokens.colors.successLight,
+            color: isLibrarian ? tokens.colors.info : tokens.colors.success,
           }}>
             {isLibrarian ? '📚 Librarian' : '🎓 Teacher'}
           </span>
-
-          {/* Active / Inactive badge */}
           <span style={{
             ...cardStyles.statusBadge,
-            background: isActive ? '#f0fff4' : '#fff5f5',
-            color: isActive ? '#276749' : '#c53030',
+            background: isActive ? tokens.colors.successLight : tokens.colors.dangerLight,
+            color: isActive ? tokens.colors.success : tokens.colors.danger,
           }}>
             {isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
       </div>
 
-      {/* User info */}
       <div style={cardStyles.name}>{user.fullName}</div>
       <div style={cardStyles.username}>@{user.userName}</div>
 
-      {/* Stream info — only for teachers */}
       {user.role === 'TEACHER' && (
         <div style={cardStyles.streamInfo}>
-          <span style={cardStyles.streamDot} />
-          {streamName
-            ? `Manages stream ${streamName}`
-            : 'No stream assigned yet'}
+          <span style={{
+            ...cardStyles.streamDot,
+            background: streamName ? tokens.colors.success : tokens.colors.borderStrong,
+          }} />
+          {streamName ? `Manages stream ${streamName}` : 'No stream assigned yet'}
         </div>
       )}
 
-      {/* Action button */}
       <div style={cardStyles.actions}>
         {isActive ? (
-          <button
-            style={cardStyles.deactivateBtn}
-            onClick={onDeactivate}
-          >
+          <Button variant="danger" size="sm" style={{ width: '100%' }} onClick={onDeactivate}>
             Deactivate
-          </button>
+          </Button>
         ) : (
-          <button
-            style={cardStyles.activateBtn}
-            onClick={onActivate}
-          >
+          <Button variant="success" size="sm" style={{ width: '100%' }} onClick={onActivate}>
             Activate
-          </button>
+          </Button>
         )}
       </div>
-
-    </div>
+    </Card>
   );
 }
 
-// ── MODAL ─────────────────────────────────────────────────────────────
-function Modal({ title, onClose, children }) {
-  return (
-    <div style={modalStyles.backdrop} onClick={onClose}>
-      <div
-        style={modalStyles.box}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={modalStyles.header}>
-          <h3 style={modalStyles.title}>{title}</h3>
-          <button style={modalStyles.closeBtn} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <div style={modalStyles.body}>{children}</div>
-      </div>
-    </div>
-  );
-}
-
-// ── FORM FIELD ────────────────────────────────────────────────────────
-function FormField({ label, children }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label style={{
-        display: 'block',
-        fontSize: 13,
-        fontWeight: 600,
-        color: '#333',
-        marginBottom: 6,
-      }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-// ── ALL STYLES ────────────────────────────────────────────────────────
+// ── STYLES ────────────────────────────────────────────────────────────
 const styles = {
   pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'flex-start', marginBottom: tokens.spacing.lg, flexWrap: 'wrap', gap: 12,
   },
-  pageTitle: {
-    margin: 0, fontSize: 24,
-    fontWeight: 700, color: '#1a1a2e',
-  },
-  pageSub: {
-    margin: '4px 0 0', color: '#666', fontSize: 14,
-  },
-  successMsg: {
-    background: '#f0fff4', border: '1px solid #c6f6d5',
-    borderRadius: 8, padding: '10px 16px',
-    color: '#276749', fontSize: 13, marginBottom: 16,
-  },
-  errorMsg: {
-    background: '#fff5f5', border: '1px solid #fed7d7',
-    borderRadius: 8, padding: '10px 16px',
-    color: '#c53030', fontSize: 13, marginBottom: 16,
-  },
+  pageTitle: { margin: 0, fontSize: 24, fontWeight: 700, color: tokens.colors.textPrimary },
+  pageSub: { margin: '4px 0 0', color: tokens.colors.textSecondary, fontSize: 14 },
   controls: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 16,
-    flexWrap: 'wrap',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: tokens.spacing.md, gap: 16, flexWrap: 'wrap',
   },
-  tabs: {
-    display: 'flex',
-    background: '#fff',
-    borderRadius: 10,
-    padding: 4,
-    gap: 2,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-  },
-  tab: {
-    padding: '7px 16px',
-    borderRadius: 7,
-    border: 'none',
-    background: 'transparent',
-    color: '#666',
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-    whiteSpace: 'nowrap',
-  },
-  tabActive: {
-    background: '#1a1a2e',
-    color: '#fff',
-    fontWeight: 600,
-  },
-  searchInput: {
-    padding: '9px 14px',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 8,
-    fontSize: 14,
-    outline: 'none',
-    width: 280,
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  loadingText: {
-    color: '#888', padding: 20,
-    textAlign: 'center', fontSize: 14,
-  },
-  emptyState: {
-    background: '#fff', borderRadius: 12,
-    padding: 60, textAlign: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: {
-    fontSize: 18, fontWeight: 700,
-    color: '#1a1a2e', marginBottom: 6,
-  },
-  emptySub: { color: '#888', fontSize: 14 },
+  searchInput: { width: 280 },
+  loadingText: { color: tokens.colors.textMuted, padding: 20, textAlign: 'center', fontSize: 14 },
   usersGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-    gap: 16,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+    gap: tokens.spacing.md,
   },
-  primaryBtn: {
-    background: '#1a1a2e', color: '#fff',
-    border: 'none', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  cancelBtn: {
-    background: '#f0f2f5', color: '#333',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  dangerBtn: {
-    background: '#fff5f5', color: '#c53030',
-    border: '1.5px solid #fed7d7', borderRadius: 8,
-    padding: '9px 18px', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  input: {
-    width: '100%', padding: '9px 12px',
-    border: '1.5px solid #e0e0e0', borderRadius: 8,
-    fontSize: 14, outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  inputHint: {
-    fontSize: 11, color: '#999',
-    marginTop: 4, display: 'block',
-  },
-  roleSelector: {
-    display: 'flex', flexDirection: 'column', gap: 8,
-  },
+  roleSelector: { display: 'flex', flexDirection: 'column', gap: 8 },
   roleOption: {
     display: 'flex', alignItems: 'center', gap: 12,
-    padding: '12px 14px', borderRadius: 8,
-    border: '1.5px solid #e0e0e0',
-    cursor: 'pointer', transition: 'all 0.15s',
+    padding: '12px 14px', borderRadius: tokens.radius.sm,
+    border: `1.5px solid ${tokens.colors.border}`,
+    cursor: 'pointer', transition: tokens.transition,
   },
   roleOptionSelected: {
-    border: '1.5px solid #1a1a2e',
-    background: '#f7f8fc',
+    border: `1.5px solid ${tokens.colors.primary}`,
+    background: tokens.colors.surface,
   },
   roleOptionIcon: { fontSize: 20, flexShrink: 0 },
-  roleOptionName: {
-    fontSize: 14, fontWeight: 600, color: '#1a1a2e',
-  },
-  roleOptionDesc: {
-    fontSize: 12, color: '#888', marginTop: 2,
-  },
-  checkmark: {
-    marginLeft: 'auto', color: '#276749',
-    fontWeight: 700, fontSize: 16,
-  },
+  roleOptionName: { fontSize: 14, fontWeight: 600, color: tokens.colors.textPrimary },
+  roleOptionDesc: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 2 },
+  checkmark: { marginLeft: 'auto', color: tokens.colors.success, fontWeight: 700, fontSize: 16 },
   confirmContent: { textAlign: 'center', padding: '8px 0 16px' },
   confirmIcon: { fontSize: 40, marginBottom: 12 },
-  confirmText: {
-    fontSize: 15, color: '#333',
-    margin: '0 0 8px', lineHeight: 1.5,
-  },
-  confirmSub: {
-    fontSize: 13, color: '#888',
-    margin: 0, lineHeight: 1.5,
-  },
-  modalError: {
-    background: '#fff5f5', border: '1px solid #fed7d7',
-    borderRadius: 8, padding: '10px 14px',
-    color: '#c53030', fontSize: 13, marginBottom: 16,
-  },
-  modalActions: {
-    display: 'flex', justifyContent: 'flex-end',
-    gap: 10, marginTop: 20,
-  },
+  confirmText: { fontSize: 15, color: tokens.colors.textPrimary, margin: '0 0 8px', lineHeight: 1.5 },
+  confirmSub: { fontSize: 13, color: tokens.colors.textMuted, margin: 0, lineHeight: 1.5 },
+  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 };
 
 const cardStyles = {
-  card: {
-    background: '#fff', borderRadius: 12,
-    padding: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    display: 'flex', flexDirection: 'column', gap: 6,
-    transition: 'opacity 0.2s',
-  },
   top: {
     display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 6,
-  },
-  avatar: {
-    width: 44, height: 44, borderRadius: '50%',
-    color: '#fff', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-    fontWeight: 700, fontSize: 18, flexShrink: 0,
+    alignItems: 'flex-start', marginBottom: 10,
   },
   badges: { display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' },
-  roleBadge: {
-    fontSize: 11, fontWeight: 600,
-    padding: '3px 8px', borderRadius: 20,
-    whiteSpace: 'nowrap',
-  },
-  statusBadge: {
-    fontSize: 11, fontWeight: 600,
-    padding: '3px 8px', borderRadius: 20,
-  },
-  name: {
-    fontSize: 16, fontWeight: 700, color: '#1a1a2e',
-  },
-  username: {
-    fontSize: 12, color: '#888',
-  },
+  roleBadge: { fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: tokens.radius.full, whiteSpace: 'nowrap' },
+  statusBadge: { fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: tokens.radius.full },
+  name: { fontSize: 16, fontWeight: 700, color: tokens.colors.textPrimary },
+  username: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 2 },
   streamInfo: {
-    display: 'flex', alignItems: 'center',
-    gap: 6, fontSize: 12, color: '#555',
-    marginTop: 4,
+    display: 'flex', alignItems: 'center', gap: 6,
+    fontSize: 12, color: tokens.colors.textSecondary, marginTop: 8,
   },
-  streamDot: {
-    width: 6, height: 6, borderRadius: '50%',
-    background: '#48bb78', flexShrink: 0,
-  },
-  actions: { marginTop: 8 },
-  deactivateBtn: {
-    width: '100%', padding: '7px',
-    background: '#fff5f5', color: '#c53030',
-    border: '1.5px solid #fed7d7', borderRadius: 7,
-    fontSize: 12, fontWeight: 600,
-    cursor: 'pointer', fontFamily: 'Segoe UI, sans-serif',
-  },
-  activateBtn: {
-    width: '100%', padding: '7px',
-    background: '#f0fff4', color: '#276749',
-    border: '1.5px solid #c6f6d5', borderRadius: 7,
-    fontSize: 12, fontWeight: 600,
-    cursor: 'pointer', fontFamily: 'Segoe UI, sans-serif',
-  },
-};
-
-const modalStyles = {
-  backdrop: {
-    position: 'fixed', inset: 0,
-    background: 'rgba(0,0,0,0.45)',
-    display: 'flex', alignItems: 'center',
-    justifyContent: 'center', zIndex: 1000, padding: 20,
-  },
-  box: {
-    background: '#fff', borderRadius: 14,
-    width: '100%', maxWidth: 460,
-    maxHeight: '90vh', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-  },
-  header: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '18px 22px',
-    borderBottom: '1px solid #f0f2f5',
-  },
-  title: {
-    margin: 0, fontSize: 17,
-    fontWeight: 700, color: '#1a1a2e',
-  },
-  closeBtn: {
-    background: 'none', border: 'none',
-    fontSize: 16, cursor: 'pointer', color: '#888', padding: 4,
-  },
-  body: { padding: '20px 22px', overflowY: 'auto' },
+  streamDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
+  actions: { marginTop: 14 },
 };

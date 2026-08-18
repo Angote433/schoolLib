@@ -1,10 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- ============================================================
+         School Library — Design System Palette
+         Matches the web app tokens (library-frontend/src/styles/tokens.js)
+         so both platforms feel like one product.
+         ============================================================ -->
+
+    <!-- Brand -->
+    <color name="primary">#1B2B4B</color>
+    <color name="primary_dark">#162038</color>
+    <color name="primary_light">#2D4270</color>
+    <color name="accent">#0D9488</color>
+    <color name="accent_dark">#0B7A70</color>
+    <color name="accent_light">#CCFBF1</color>
+
+    <!-- Status -->
+    <color name="danger">#DC2626</color>
+    <color name="danger_light">#FEF2F2</color>
+    <color name="warning">#D97706</color>
+    <color name="warning_light">#FFFBEB</color>
+    <color name="success">#16A34A</color>
+    <color name="success_light">#F0FDF4</color>
+    <color name="info">#1D4ED8</color>
+    <color name="info_light">#EFF6FF</color>
+
+    <!-- Surfaces -->
+    <color name="surface">#F8FAFC</color>
+    <color name="card">#FFFFFF</color>
+    <color name="border">#E2E8F0</color>
+
+    <!-- Text -->
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
+    <color name="text_muted">#64748B</color>
+    <color name="text_inverse">#FFFFFF</color>
+    <color name="text_inverse_muted">#B7C0D6</color>
+
+    <!-- White-on-dark overlays (badges/pills on gradient headers) -->
+    <color name="white_10">#1AFFFFFF</color>
+    <color name="white_15">#26FFFFFF</color>
+    <color name="white_20">#33FFFFFF</color>
+
+    <!-- Base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

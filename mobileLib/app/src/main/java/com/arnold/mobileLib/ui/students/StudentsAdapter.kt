@@ -1,7 +1,10 @@
 package com.arnold.mobileLib.ui.students
 
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import com.arnold.mobileLib.R
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -42,21 +45,26 @@ class StudentsAdapter :
             binding.tvAvatar.text = student.fullName
                 .firstOrNull()?.uppercaseChar()?.toString() ?: "S"
 
+            // Recolor the pill drawable in place (instead of
+            // setBackgroundColor, which would replace it with a plain
+            // rectangle and lose the rounded badge shape).
+            val context = binding.root.context
+            val pill = binding.tvStatus.background.mutate() as GradientDrawable
             if (student.isActive) {
                 binding.tvStatus.text = "Active"
                 binding.tvStatus.setTextColor(
-                    android.graphics.Color.parseColor("#276749")
+                    ContextCompat.getColor(context, R.color.success)
                 )
-                binding.tvStatus.setBackgroundColor(
-                    android.graphics.Color.parseColor("#F0FFF4")
+                pill.setColor(
+                    ContextCompat.getColor(context, R.color.success_light)
                 )
             } else {
                 binding.tvStatus.text = "Inactive"
                 binding.tvStatus.setTextColor(
-                    android.graphics.Color.parseColor("#C53030")
+                    ContextCompat.getColor(context, R.color.danger)
                 )
-                binding.tvStatus.setBackgroundColor(
-                    android.graphics.Color.parseColor("#FFF5F5")
+                pill.setColor(
+                    ContextCompat.getColor(context, R.color.danger_light)
                 )
             }
             binding.root.setOnClickListener {

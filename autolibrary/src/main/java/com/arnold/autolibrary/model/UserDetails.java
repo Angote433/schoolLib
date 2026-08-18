@@ -1,6 +1,6 @@
 package com.arnold.autolibrary.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -28,6 +28,7 @@ public class UserDetails {
 
     @ManyToOne
     @JoinColumn(name="stream_id")
+    @JsonIgnoreProperties({"teacher", "hibernateLazyInitializer", "handler"})
     private Stream stream;
 
     @Column(nullable = false)

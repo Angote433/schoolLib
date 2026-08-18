@@ -39,7 +39,7 @@ class DistributionsAdapter(
             binding.tvDistBarcode.text =
                 record.bookCopy?.qrCode ?: ""
             binding.tvDistStudentName.text =
-                record.student?.fullName ?: "Unknown Student"
+                "🧑 " + (record.student?.fullName ?: "Unknown Student")
             binding.tvDistDate.text =
                 "Issued: ${record.dateDistributed}"
 

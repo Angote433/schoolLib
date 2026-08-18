@@ -1,5 +1,6 @@
 package com.arnold.autolibrary.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
@@ -24,6 +25,7 @@ public class Stream {
 
     @ManyToOne
     @JoinColumn(name = "teacher_id")
+    @JsonIgnoreProperties({"stream", "hibernateLazyInitializer", "handler"})
     private UserDetails teacher;
 
     public Stream(){}

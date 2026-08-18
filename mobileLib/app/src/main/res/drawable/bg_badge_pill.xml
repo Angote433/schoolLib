@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generic rounded status pill. The fill color is a placeholder —
+     screens that show dynamic status (Active/Inactive, AVAILABLE/
+     DISTRIBUTED/LOST, success/error) recolor this at runtime via
+     (background as GradientDrawable).setColor(...), which keeps the
+     pill shape intact instead of flattening it into a plain rectangle. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/success_light"/>
+    <corners android:radius="999dp"/>
+</shape>

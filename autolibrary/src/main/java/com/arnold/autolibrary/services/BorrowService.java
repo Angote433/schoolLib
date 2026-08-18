@@ -84,12 +84,6 @@ public class BorrowService {
         return borrowRecord;
     }
 
-    //overdue borrows
-
-    List<BorrowRecord>getOverdueBorrrows(){
-        return borrowRepo.findByStatusAndDateDueBefore(BorrowStatus.ACTIVE,LocalDate.now());
-    }
-
     //Lost
     @Transactional
     public LossReport flagAsLost(String qrCode,String reason){
@@ -124,6 +118,8 @@ public class BorrowService {
     }
 
     public List<BorrowRecord> getOverdueBorrows() {
-        return borrowRepo.findByStatus(BorrowStatus.OVERDUE);
+        //no scheduled job flips ACTIVE -> OVERDUE, so derive it live:
+        //active borrows whose due date has already passed
+        return borrowRepo.findByStatusAndDateDueBefore(BorrowStatus.ACTIVE, LocalDate.now());
     }
 }

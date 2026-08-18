@@ -39,7 +39,7 @@ public class AuthController {
         }
         //user active?
         if(!user.isActive()){
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Account deactivated,contact the librarian");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account deactivated,contact the librarian");
 
         }
 

@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F0F2F5">
+    android:background="@color/surface">
 
     <!-- Fragment container — screens load here -->
     <androidx.fragment.app.FragmentContainerView
@@ -24,13 +24,14 @@
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:menu="@menu/bottom_nav_menu"
         app:itemIconTint="@color/bottom_nav_color"
         app:itemTextColor="@color/bottom_nav_color"
-        android:background="#FFFFFF"
+        android:background="@color/card"
         app:labelVisibilityMode="labeled"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

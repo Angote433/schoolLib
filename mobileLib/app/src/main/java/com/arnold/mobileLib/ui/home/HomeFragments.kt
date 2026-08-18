@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
@@ -40,17 +41,24 @@ class HomeFragment : Fragment() {
         binding.tvStreamName.text =
             "Stream: ${session.getStreamName() ?: "Not assigned"}"
 
-        // Load stats if stream is assigned
-        val streamId = session.getStreamId()
-        if (streamId != null) {
-            viewModel.loadStats(streamId)
-        } else {
+        if (session.getStreamId() == null) {
             binding.tvStudentCount.text = "—"
             binding.tvBooksOut.text = "—"
         }
 
         observeViewModel()
         setupClickListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reload every time Home becomes visible again — not just on
+        // first creation — so the stats reflect books assigned/returned
+        // on the Scan tab without requiring a manual refresh.
+        val app = requireActivity().application as MobileLibApp
+        app.sessionManager.getStreamId()?.let { streamId ->
+            viewModel.loadStats(streamId)
+        }
     }
 
     private fun observeViewModel() {
@@ -94,12 +102,22 @@ class HomeFragment : Fragment() {
         }
 
         binding.btnLogout.setOnClickListener {
-            val app = requireActivity().application as MobileLibApp
-            app.sessionManager.clearSession()
-            startActivity(
-                Intent(requireContext(), LoginActivity::class.java)
-            )
-            requireActivity().finish()
+            // Confirm before logging out — same logout logic as before,
+            // just gated behind a confirmation dialog so it isn't
+            // triggered by an accidental tap.
+            AlertDialog.Builder(requireContext())
+                .setTitle("Log out?")
+                .setMessage("You'll need to sign in again to continue.")
+                .setPositiveButton("Logout") { _, _ ->
+                    val app = requireActivity().application as MobileLibApp
+                    app.sessionManager.clearSession()
+                    startActivity(
+                        Intent(requireContext(), LoginActivity::class.java)
+                    )
+                    requireActivity().finish()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
 

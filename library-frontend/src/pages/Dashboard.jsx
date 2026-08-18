@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   bookService,
   borrowService,
   lossService,
-  distributionService,
   streamService,
 } from '../services/libraryApi';
+import { tokens } from '../styles/tokens';
+import { Card, Avatar, StatusBadge, Button } from '../components/SharedComponents';
+
+function timeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: 'Good morning', icon: '☀️' };
+  if (hour < 17) return { text: 'Good afternoon', icon: '🌤️' };
+  return { text: 'Good evening', icon: '🌙' };
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Each piece of data has its own state
   const [stats, setStats] = useState({
@@ -58,7 +68,7 @@ export default function Dashboard() {
       // Update stats from responses
       setStats({
         totalBooks: booksRes.data.length,
-        totalStreams: streamsRes.data.filter(s => s.isActive).length,
+        totalStreams: streamsRes.data.filter(s => s.active).length,
         pendingLosses: pendingLossRes.data.length,
         activeBorrows: activeBorrowRes.data.length,
         overdueBorrows: overdueBorrowRes.data.length,
@@ -71,17 +81,18 @@ export default function Dashboard() {
 
     } catch (err) {
       setError('Failed to load dashboard data. Please refresh.');
-      console.error('Dashboard load error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const greeting = timeOfDayGreeting();
+
   // Show loading state
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.loadingText}>Loading dashboard...</div>
+        <div style={styles.loadingText}>Loading dashboard…</div>
       </div>
     );
   }
@@ -89,29 +100,44 @@ export default function Dashboard() {
   // Show error state
   if (error) {
     return (
-      <div style={styles.errorContainer}>
-        <p style={styles.errorText}>{error}</p>
-        <button
-          style={styles.retryBtn}
-          onClick={loadDashboardData}
-        >
-          Retry
-        </button>
-      </div>
+      <Card style={{ textAlign: 'center', borderColor: tokens.colors.dangerBorder }}>
+        <p style={{ color: tokens.colors.danger, margin: '0 0 16px' }}>{error}</p>
+        <Button variant="primary" onClick={loadDashboardData}>Retry</Button>
+      </Card>
     );
   }
 
   return (
     <div>
 
-      {/* Welcome message */}
-      <div style={styles.welcomeSection}>
-        <h1 style={styles.welcomeTitle}>
-          Welcome back, {user?.fullName?.split(' ')[0]} 👋
-        </h1>
-        <p style={styles.welcomeSub}>
-          Here is what is happening in the library today.
-        </p>
+      {/* ── GREETING / HERO CARD ─────────────────────────── */}
+      <div style={styles.heroCard}>
+        <div style={styles.heroDecor} />
+        <div style={styles.heroLeft}>
+          <div style={styles.heroGreeting}>
+            <span style={{ fontSize: 22 }}>{greeting.icon}</span>
+            {greeting.text}, {user?.fullName?.split(' ')[0]}
+          </div>
+          <p style={styles.heroSub}>
+            Here's what's happening in the library today.
+          </p>
+        </div>
+        <div style={styles.heroActions}>
+          <Button
+            variant="accent"
+            onClick={() => navigate('/distributions')}
+            style={styles.heroBtn}
+          >
+            📷 Scan Book
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/students')}
+            style={{ ...styles.heroBtn, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.25)' }}
+          >
+            + Add Student
+          </Button>
+        </div>
       </div>
 
       {/* ── STAT CARDS ───────────────────────────────────── */}
@@ -121,35 +147,40 @@ export default function Dashboard() {
           icon="📚"
           label="Book Titles"
           value={stats.totalBooks}
-          color="#2c5364"
+          color={tokens.colors.primary}
+          onClick={() => navigate('/books')}
         />
 
         <StatCard
           icon="🏫"
           label="Active Streams"
           value={stats.totalStreams}
-          color="#276749"
+          color={tokens.colors.accent}
+          onClick={() => navigate('/classes')}
         />
 
         <StatCard
           icon="📖"
           label="Active Borrows"
           value={stats.activeBorrows}
-          color="#2b6cb0"
+          color={tokens.colors.info}
+          onClick={() => navigate('/borrows')}
         />
 
         <StatCard
           icon="⚠️"
           label="Pending Losses"
           value={stats.pendingLosses}
-          color="#c05621"
+          color={tokens.colors.warning}
+          onClick={() => navigate('/losses')}
         />
 
         <StatCard
           icon="🔴"
           label="Overdue Borrows"
           value={stats.overdueBorrows}
-          color="#c53030"
+          color={tokens.colors.danger}
+          onClick={() => navigate('/borrows')}
         />
 
       </div>
@@ -158,86 +189,86 @@ export default function Dashboard() {
       <div style={styles.listsGrid}>
 
         {/* Pending Loss Reports */}
-        <div style={styles.listCard}>
+        <Card style={styles.listCard}>
           <div style={styles.listHeader}>
             <span style={styles.listTitle}>⚠️ Pending Loss Reports</span>
-            <span style={styles.listCount}>
-              {stats.pendingLosses} total
-            </span>
+            <span style={styles.listCount}>{stats.pendingLosses} total</span>
           </div>
 
           {pendingLosses.length === 0 ? (
-            <div style={styles.emptyState}>
-              🎉 No pending losses
-            </div>
+            <div style={styles.emptyState}>🎉 No pending losses</div>
           ) : (
-            pendingLosses.map((report, index) => (
-              <div key={index} style={styles.listItem}>
-                <div style={styles.listItemLeft}>
-                  <div style={styles.listItemName}>
-                    {report.student?.fullName || 'Unknown Student'}
+            <>
+              {pendingLosses.map((report, index) => (
+                <div key={index} style={styles.listItem}>
+                  <Avatar
+                    name={report.student?.fullName}
+                    size={36}
+                    background={tokens.colors.dangerLight}
+                  />
+                  <div style={styles.listItemLeft}>
+                    <div style={styles.listItemName}>
+                      {report.student?.fullName || 'Unknown Student'}
+                    </div>
+                    <div style={styles.listItemSub}>
+                      {report.bookCopy?.bookDetails?.titleName
+                        || report.bookCopy?.qrCode
+                        || 'Unknown Book'}
+                      {' • '}Flagged {report.dateFlagged}
+                    </div>
                   </div>
-                  <div style={styles.listItemSub}>
-                    {report.bookCopy?.bookDetails?.titleName
-                      || report.bookCopy?.qrCode
-                      || 'Unknown Book'}
-                  </div>
-                  <div style={styles.listItemSub}>
-                    Flagged: {report.dateFlagged}
-                  </div>
+                  <StatusBadge status={report.source} />
                 </div>
-                <span style={{
-                  ...styles.badge,
-                  background: '#fff5f5',
-                  color: '#c53030',
-                }}>
-                  {report.source}
-                </span>
+              ))}
+              <div style={styles.viewAllRow}>
+                <button style={styles.viewAllLink} onClick={() => navigate('/losses')}>
+                  View All →
+                </button>
               </div>
-            ))
+            </>
           )}
-        </div>
+        </Card>
 
         {/* Overdue Borrows */}
-        <div style={styles.listCard}>
+        <Card style={styles.listCard}>
           <div style={styles.listHeader}>
             <span style={styles.listTitle}>🔴 Overdue Borrows</span>
-            <span style={styles.listCount}>
-              {stats.overdueBorrows} total
-            </span>
+            <span style={styles.listCount}>{stats.overdueBorrows} total</span>
           </div>
 
           {overdueBorrows.length === 0 ? (
-            <div style={styles.emptyState}>
-              🎉 No overdue borrows
-            </div>
+            <div style={styles.emptyState}>🎉 No overdue borrows</div>
           ) : (
-            overdueBorrows.map((record, index) => (
-              <div key={index} style={styles.listItem}>
-                <div style={styles.listItemLeft}>
-                  <div style={styles.listItemName}>
-                    {record.student?.fullName || 'Unknown Student'}
+            <>
+              {overdueBorrows.map((record, index) => (
+                <div key={index} style={styles.listItem}>
+                  <Avatar
+                    name={record.student?.fullName}
+                    size={36}
+                    background={tokens.colors.warningLight}
+                  />
+                  <div style={styles.listItemLeft}>
+                    <div style={styles.listItemName}>
+                      {record.student?.fullName || 'Unknown Student'}
+                    </div>
+                    <div style={styles.listItemSub}>
+                      {record.bookCopy?.bookDetails?.titleName
+                        || record.bookCopy?.qrCode
+                        || 'Unknown Book'}
+                      {' • '}Due {record.dateDue}
+                    </div>
                   </div>
-                  <div style={styles.listItemSub}>
-                    {record.bookCopy?.bookDetails?.titleName
-                      || record.bookCopy?.qrCode
-                      || 'Unknown Book'}
-                  </div>
-                  <div style={styles.listItemSub}>
-                    Due: {record.dateDue}
-                  </div>
+                  <StatusBadge status="OVERDUE" />
                 </div>
-                <span style={{
-                  ...styles.badge,
-                  background: '#fffff0',
-                  color: '#975a16',
-                }}>
-                  OVERDUE
-                </span>
+              ))}
+              <div style={styles.viewAllRow}>
+                <button style={styles.viewAllLink} onClick={() => navigate('/borrows')}>
+                  View All →
+                </button>
               </div>
-            ))
+            </>
           )}
-        </div>
+        </Card>
 
       </div>
     </div>
@@ -245,22 +276,17 @@ export default function Dashboard() {
 }
 
 // ── STAT CARD COMPONENT ───────────────────────────────────────────────
-// A small reusable component used only inside Dashboard
-// Takes icon, label, value, and color as props
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color, onClick }) {
   return (
-    <div style={styles.statCard}>
-      <div style={{
-        ...styles.statIcon,
-        background: color + '18',
-      }}>
+    <Card hoverable onClick={onClick} style={styles.statCard}>
+      <div style={{ ...styles.statIcon, background: color + '18', color }}>
         {icon}
       </div>
       <div>
         <div style={styles.statValue}>{value}</div>
         <div style={styles.statLabel}>{label}</div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -273,158 +299,152 @@ const styles = {
     height: 300,
   },
   loadingText: {
-    color: '#666',
+    color: tokens.colors.textMuted,
     fontSize: 15,
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  errorContainer: {
-    background: '#fff5f5',
-    border: '1px solid #fed7d7',
-    borderRadius: 12,
-    padding: 24,
-    textAlign: 'center',
-  },
-  errorText: {
-    color: '#c53030',
-    margin: '0 0 16px',
-  },
-  retryBtn: {
-    padding: '8px 20px',
-    background: '#1a1a2e',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: 14,
   },
 
-  welcomeSection: {
-    marginBottom: 24,
+  heroCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    background: `linear-gradient(120deg, ${tokens.colors.primary} 0%, ${tokens.colors.primaryDark} 100%)`,
+    borderRadius: tokens.radius.lg,
+    padding: '28px 32px',
+    marginBottom: tokens.spacing.lg,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 20,
+    boxShadow: tokens.shadows.lg,
   },
-  welcomeTitle: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 700,
-    color: '#1a1a2e',
-    fontFamily: 'Segoe UI, sans-serif',
+  heroDecor: {
+    position: 'absolute',
+    top: -60, right: -40,
+    width: 220, height: 220,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(13,148,136,0.35) 0%, transparent 70%)',
+    pointerEvents: 'none',
   },
-  welcomeSub: {
-    margin: '6px 0 0',
-    color: '#666',
-    fontSize: 14,
-    fontFamily: 'Segoe UI, sans-serif',
+  heroLeft: { position: 'relative', zIndex: 1 },
+  heroGreeting: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    fontSize: 24, fontWeight: 700, color: '#fff',
   },
+  heroSub: {
+    margin: '8px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: 14,
+  },
+  heroActions: {
+    display: 'flex', gap: 10, position: 'relative', zIndex: 1, flexWrap: 'wrap',
+  },
+  heroBtn: { height: 44 },
 
   // Stats grid — 5 cards in a row
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: 16,
-    marginBottom: 24,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+    gap: tokens.spacing.md,
+    marginBottom: tokens.spacing.lg,
   },
   statCard: {
-    background: '#ffffff',
-    borderRadius: 12,
-    padding: '20px',
     display: 'flex',
     alignItems: 'center',
     gap: 14,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    padding: 20,
   },
   statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: tokens.radius.md,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 22,
+    fontSize: 20,
     flexShrink: 0,
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: '#1a1a2e',
+    fontSize: 30,
+    fontWeight: 800,
+    color: tokens.colors.textPrimary,
     lineHeight: 1,
-    fontFamily: 'Segoe UI, sans-serif',
   },
   statLabel: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-    fontFamily: 'Segoe UI, sans-serif',
+    color: tokens.colors.textMuted,
+    marginTop: 6,
+    fontWeight: 500,
   },
 
   // Two column lists
   listsGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: 20,
+    gap: tokens.spacing.lg,
   },
-  listCard: {
-    background: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
+  listCard: { padding: 0, overflow: 'hidden' },
   listHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottom: '1px solid #f0f2f5',
+    padding: '16px 20px',
+    borderBottom: `1px solid ${tokens.colors.border}`,
+    background: tokens.colors.surface,
   },
   listTitle: {
     fontWeight: 700,
     fontSize: 14,
-    color: '#1a1a2e',
-    fontFamily: 'Segoe UI, sans-serif',
+    color: tokens.colors.textPrimary,
   },
   listCount: {
-    fontSize: 12,
-    color: '#888',
-    background: '#f0f2f5',
-    padding: '2px 8px',
-    borderRadius: 20,
-    fontFamily: 'Segoe UI, sans-serif',
+    fontSize: 11,
+    color: tokens.colors.textMuted,
+    background: tokens.colors.card,
+    border: `1px solid ${tokens.colors.border}`,
+    padding: '2px 10px',
+    borderRadius: tokens.radius.full,
+    fontWeight: 600,
   },
   listItem: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px 0',
-    borderBottom: '1px solid #f7fafc',
+    gap: 12,
+    padding: '12px 20px',
+    borderBottom: `1px solid ${tokens.colors.surface}`,
   },
   listItemLeft: {
     flex: 1,
+    minWidth: 0,
   },
   listItemName: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#333',
-    fontFamily: 'Segoe UI, sans-serif',
+    color: tokens.colors.textPrimary,
   },
   listItemSub: {
     fontSize: 11,
-    color: '#999',
+    color: tokens.colors.textMuted,
     marginTop: 2,
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  badge: {
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '3px 10px',
-    borderRadius: 20,
-    flexShrink: 0,
-    marginLeft: 8,
-    fontFamily: 'Segoe UI, sans-serif',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   emptyState: {
     textAlign: 'center',
-    padding: '30px 0',
-    color: '#999',
+    padding: '36px 20px',
+    color: tokens.colors.textMuted,
     fontSize: 14,
-    fontFamily: 'Segoe UI, sans-serif',
+  },
+  viewAllRow: {
+    padding: '10px 20px 14px',
+    textAlign: 'right',
+  },
+  viewAllLink: {
+    background: 'none',
+    border: 'none',
+    color: tokens.colors.accent,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: tokens.font.family,
+    padding: 0,
   },
 };

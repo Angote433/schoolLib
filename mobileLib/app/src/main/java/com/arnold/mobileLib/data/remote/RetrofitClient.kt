@@ -14,7 +14,7 @@ object RetrofitClient {
     // Use 10.0.2.2 for Android emulator (maps to localhost)
     // Use your actual PC IP for real device on same WiFi
     // e.g. http://192.168.1.100:8080/api/
-    private const val BASE_URL = "http://192.168.0.3:8080/api/"
+    private const val BASE_URL = "http://192.168.100.24:8080/api/"
 
     private lateinit var sessionManager: SessionManager
 

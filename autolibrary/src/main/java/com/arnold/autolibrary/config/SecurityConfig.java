@@ -75,6 +75,8 @@ public class SecurityConfig {
                         .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.POST, "/api/streams/**")
                         .hasRole("LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/streams/**")
+                        .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/losses/**")
                         .hasRole("LIBRARIAN")
 

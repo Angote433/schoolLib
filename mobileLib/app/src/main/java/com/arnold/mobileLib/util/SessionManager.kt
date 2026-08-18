@@ -20,9 +20,12 @@ class SessionManager(context: Context) {
     }
 
     fun saveSession(
-        token: String, userId: Int,
-        fullName: String, role: String,
-        userName: String, streamId: Int?,
+        token: String,
+        userId: Int,
+        fullName: String,
+        role: String,
+        userName: String,
+        streamId: Int?,
         streamName: String?
     ) {
         prefs.edit().apply {
@@ -32,9 +35,8 @@ class SessionManager(context: Context) {
             putString(KEY_ROLE, role)
             putString(KEY_USERNAME, userName)
             putInt(KEY_STREAM_ID, streamId ?: -1)
-            putString(KEY_STREAM_NAME, streamName)
-            apply()
-        }
+            putString(KEY_STREAM_NAME, streamName ?: "")
+        }.commit()
     }
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)

@@ -1,26 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F0F2F5">
+    android:background="@color/surface">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#1A1A2E"
-        android:padding="16dp">
+        android:background="@drawable/bg_gradient_header_bottom_round"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="20dp"
+        android:elevation="4dp">
 
         <TextView
+            android:id="@+id/tvDistTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Books Out"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"/>
+            android:textColor="@color/text_inverse"/>
 
         <TextView
             android:id="@+id/tvDistStreamLabel"
@@ -28,7 +34,7 @@
             android:layout_height="wrap_content"
             android:text="Active distributions in your stream"
             android:textSize="12sp"
-            android:textColor="#AAAACC"
+            android:textColor="@color/text_inverse_muted"
             android:layout_marginTop="2dp"/>
 
     </LinearLayout>
@@ -38,8 +44,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
-        android:background="#FFFFFF"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp"
         android:gravity="center_vertical">
 
         <TextView
@@ -49,16 +57,21 @@
             android:layout_weight="1"
             android:text="Loading..."
             android:textSize="13sp"
-            android:textColor="#555555"/>
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"/>
 
         <Button
             android:id="@+id/btnRefresh"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
+            android:layout_height="34dp"
             android:text="↺ Refresh"
             android:textSize="12sp"
-            android:backgroundTint="#F0F2F5"
-            android:textColor="#333333"/>
+            android:textAllCaps="false"
+            android:backgroundTint="@color/card"
+            android:textColor="@color/text_secondary"
+            app:cornerRadius="8dp"
+            app:strokeColor="@color/border"
+            app:strokeWidth="1dp"/>
 
     </LinearLayout>
 
@@ -68,6 +81,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:indeterminateTint="@color/primary"
         android:visibility="gone"/>
 
     <!-- List -->
@@ -76,14 +90,17 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
         android:clipToPadding="false"/>
 
     <!-- Empty state -->
     <LinearLayout
         android:id="@+id/emptyStateDist"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="vertical"
         android:gravity="center"
         android:padding="40dp"
@@ -93,24 +110,27 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="📚"
-            android:textSize="40sp"/>
+            android:textSize="48sp"/>
 
         <TextView
+            android:id="@+id/tvEmptyDistTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No books currently out"
-            android:textSize="16sp"
+            android:text="All books returned ✅"
+            android:textSize="17sp"
             android:textStyle="bold"
-            android:textColor="#1A1A2E"
-            android:layout_marginTop="8dp"/>
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="12dp"/>
 
         <TextView
+            android:id="@+id/tvEmptyDistSub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="All books have been returned"
+            android:text="No books are currently checked out to students in your stream"
             android:textSize="13sp"
-            android:textColor="#888888"
-            android:layout_marginTop="4dp"/>
+            android:textColor="@color/text_muted"
+            android:layout_marginTop="4dp"
+            android:gravity="center"/>
 
     </LinearLayout>
 

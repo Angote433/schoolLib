@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { tokens } from '../styles/tokens';
+import { Input, Button, Banner } from '../components/SharedComponents';
 
 export default function Login() {
 
@@ -43,8 +45,6 @@ export default function Login() {
       // { token, userId, fullName, role, userName }
       const data = response.data;
 
-      console.log('Login successful:', data);
-
       // Step 3 — store token and user in AuthContext
       // This also saves to localStorage for page refresh
       login(data, data.token);
@@ -69,13 +69,17 @@ export default function Login() {
 
   return (
     <div style={styles.page}>
+      <div style={styles.decorLayer} />
+
       <div style={styles.card}>
 
         {/* Header */}
         <div style={styles.header}>
-          <div style={styles.icon}>📚</div>
-          <h1 style={styles.title}>Autolibrary</h1>
-          <p style={styles.subtitle}>Sign in to your account</p>
+          <div style={styles.iconWrap}>
+            <span style={styles.icon}>📚</span>
+          </div>
+          <h1 style={styles.title}>School Library</h1>
+          <p style={styles.subtitle}>Sign in to manage your library</p>
         </div>
 
         {/* Form */}
@@ -84,93 +88,110 @@ export default function Login() {
           {/* Username field */}
           <div style={styles.field}>
             <label style={styles.label}>Username</label>
-            <input
-              style={styles.input}
+            <Input
               type="text"
               placeholder="Enter your username"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               required
               disabled={loading}
+              style={styles.input}
             />
           </div>
 
           {/* Password field */}
           <div style={styles.field}>
             <label style={styles.label}>Password</label>
-            <input
-              style={styles.input}
+            <Input
               type="password"
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              style={styles.input}
             />
           </div>
 
           {/* Error message — only shows when there is an error */}
-          {error && (
-            <div style={styles.error}>
-              ⚠️ {error}
-            </div>
-          )}
+          {error && <Banner type="error">{error}</Banner>}
 
           {/* Submit button */}
-          <button
-            style={{
-              ...styles.button,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
             disabled={loading}
+            style={styles.submitBtn}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+            {loading ? 'Signing in…' : 'Sign In'}
+          </Button>
 
         </form>
       </div>
+
+      <p style={styles.footerNote}>
+        School Library Management System — for librarians &amp; staff
+      </p>
     </div>
   );
 }
 
 // Styles — written as JavaScript objects
-// Same as CSS but with camelCase property names
 const styles = {
   page: {
     minHeight: '100vh',
-    background: '#f0f2f5',
+    background: `linear-gradient(160deg, ${tokens.colors.primary} 0%, ${tokens.colors.primaryDark} 55%, #0B1226 100%)`,
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: 'Segoe UI, sans-serif',
+    fontFamily: tokens.font.family,
+    position: 'relative',
+    overflow: 'hidden',
+    padding: 20,
+  },
+  decorLayer: {
+    position: 'absolute',
+    inset: 0,
+    backgroundImage:
+      `radial-gradient(circle at 15% 20%, rgba(13,148,136,0.25) 0%, transparent 45%),
+       radial-gradient(circle at 85% 80%, rgba(45,66,112,0.5) 0%, transparent 50%)`,
+    pointerEvents: 'none',
   },
   card: {
-    background: '#ffffff',
-    borderRadius: 12,
-    padding: '40px 36px',
+    background: tokens.colors.card,
+    borderRadius: tokens.radius.xl,
+    padding: '44px 40px',
     width: '100%',
     maxWidth: 400,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+    boxShadow: tokens.shadows.xl,
+    position: 'relative',
+    zIndex: 1,
   },
   header: {
     textAlign: 'center',
     marginBottom: 32,
   },
+  iconWrap: {
+    width: 64, height: 64, borderRadius: tokens.radius.lg,
+    background: tokens.colors.surface,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    margin: '0 auto 16px',
+  },
   icon: {
-    fontSize: 48,
-    marginBottom: 12,
+    fontSize: 32,
   },
   title: {
     margin: 0,
     fontSize: 24,
-    fontWeight: 700,
-    color: '#1a1a2e',
+    fontWeight: 800,
+    color: tokens.colors.textPrimary,
+    letterSpacing: -0.3,
   },
   subtitle: {
     margin: '6px 0 0',
-    color: '#666',
+    color: tokens.colors.textMuted,
     fontSize: 14,
   },
   form: {
@@ -186,36 +207,20 @@ const styles = {
   label: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#333',
+    color: tokens.colors.textSecondary,
   },
   input: {
-    padding: '10px 14px',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 8,
-    fontSize: 14,
-    outline: 'none',
+    height: 44,
+  },
+  submitBtn: {
     width: '100%',
-    boxSizing: 'border-box',
-    fontFamily: 'Segoe UI, sans-serif',
-  },
-  error: {
-    background: '#fff5f5',
-    border: '1px solid #fed7d7',
-    borderRadius: 8,
-    padding: '10px 14px',
-    color: '#c53030',
-    fontSize: 13,
-  },
-  button: {
-    background: '#1a1a2e',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: 8,
-    padding: '12px',
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: 'pointer',
     marginTop: 8,
-    fontFamily: 'Segoe UI, sans-serif',
+  },
+  footerNote: {
+    marginTop: 24,
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    position: 'relative',
+    zIndex: 1,
   },
 };

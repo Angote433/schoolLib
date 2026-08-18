@@ -20,6 +20,11 @@ public interface DistributionRecordRepo extends JpaRepository<DistributionRecord
 
     List<DistributionRecord> findByStudentStudentId(int studentId);
 
+    //mobile app: all distributions for a teacher's stream in a given year
+    //(Home stat card + "Books Out" tab)
+    List<DistributionRecord> findByStudentStreamStreamIdAndAcademicYear(
+            int streamId, int academicYear);
+
     //return flow - students in a stream currently holding a copy of a given ISBN title
     List<DistributionRecord> findByStatusAndBookCopyBookDetailsIsbnAndStudentStreamStreamId(
             DistributionStatus status, String isbn, int streamId);

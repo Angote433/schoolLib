@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rounded search bar — white pill with a light border, sits just
+     below the header card on Students screen. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/card"/>
+    <stroke android:width="1.5dp" android:color="@color/border"/>
+    <corners android:radius="12dp"/>
+</shape>
