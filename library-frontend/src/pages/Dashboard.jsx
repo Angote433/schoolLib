@@ -6,9 +6,11 @@ import {
   borrowService,
   lossService,
   streamService,
+  studentService,
+  distributionService,
 } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
-import { Card, Avatar, StatusBadge, Button } from '../components/SharedComponents';
+import { Card, Avatar, StatusBadge, Button, NoStreamAssigned } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
 
 function timeOfDayGreeting() {
@@ -20,6 +22,13 @@ function timeOfDayGreeting() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  return user?.role === 'TEACHER'
+    ? <TeacherDashboard user={user} />
+    : <LibrarianDashboard user={user} />;
+}
+
+// ── LIBRARIAN DASHBOARD — school-wide totals, as before ────────────────
+function LibrarianDashboard({ user }) {
   const navigate = useNavigate();
   const { isMobile } = useScreenSize();
 
@@ -272,6 +281,202 @@ export default function Dashboard() {
           )}
         </Card>
 
+      </div>
+    </div>
+  );
+}
+
+// ── TEACHER DASHBOARD — scoped to their own stream only ────────────────
+// No school-wide totals, no other streams' data, no borrow desk stats
+// (borrowing is a librarian-only function). Every number here comes
+// from an endpoint the backend already scopes to the caller's stream.
+function TeacherDashboard({ user }) {
+  const navigate = useNavigate();
+  const { isMobile } = useScreenSize();
+
+  const hasNoStream = !user?.streamId;
+
+  const [myStream, setMyStream] = useState(null);
+  const [studentCount, setStudentCount] = useState(0);
+  const [booksOutCount, setBooksOutCount] = useState(0);
+  const [pendingLosses, setPendingLosses] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (hasNoStream) {
+      setLoading(false);
+      return;
+    }
+    loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const year = new Date().getFullYear();
+      const [streamRes, studentsRes, distRes, pendingLossRes] = await Promise.all([
+        streamService.getById(user.streamId),
+        studentService.getByStream(user.streamId),
+        distributionService.getByYear(year),
+        lossService.getPending(),
+      ]);
+
+      setMyStream(streamRes.data);
+      setStudentCount(studentsRes.data.length);
+      setBooksOutCount(distRes.data.filter(d => d.status === 'DISTRIBUTED').length);
+      setPendingLosses(pendingLossRes.data.slice(0, 5));
+
+    } catch (err) {
+      setError('Failed to load dashboard data. Please refresh.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const greeting = timeOfDayGreeting();
+
+  if (hasNoStream) {
+    return (
+      <div>
+        <div style={styles.heroCard}>
+          <div style={styles.heroDecor} />
+          <div style={styles.heroLeft}>
+            <div style={styles.heroGreeting}>
+              <span style={{ fontSize: 22 }}>{greeting.icon}</span>
+              {greeting.text}, {user?.fullName?.split(' ')[0]}
+            </div>
+          </div>
+        </div>
+        <NoStreamAssigned />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={styles.loadingText}>Loading dashboard…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card style={{ textAlign: 'center', borderColor: tokens.colors.dangerBorder }}>
+        <p style={{ color: tokens.colors.danger, margin: '0 0 16px' }}>{error}</p>
+        <Button variant="primary" onClick={loadDashboardData}>Retry</Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+
+      {/* ── GREETING / HERO CARD ─────────────────────────── */}
+      <div style={styles.heroCard}>
+        <div style={styles.heroDecor} />
+        <div style={styles.heroLeft}>
+          <div style={styles.heroGreeting}>
+            <span style={{ fontSize: 22 }}>{greeting.icon}</span>
+            {greeting.text}, {user?.fullName?.split(' ')[0]}
+          </div>
+          <p style={styles.heroSub}>
+            Here's what's happening in Stream {myStream?.streamName || user.streamName} today.
+          </p>
+        </div>
+        <div style={styles.heroActions}>
+          <Button
+            variant="accent"
+            onClick={() => navigate('/distributions')}
+            style={styles.heroBtn}
+          >
+            📦 Assign Book
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/students')}
+            style={{ ...styles.heroBtn, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.25)' }}
+          >
+            🎓 My Students
+          </Button>
+        </div>
+      </div>
+
+      {/* ── STAT CARDS — this stream only ─────────────────── */}
+      <div style={{ ...styles.statsGrid, ...(isMobile ? { gridTemplateColumns: 'repeat(2, 1fr)' } : {}) }}>
+
+        <StatCard
+          icon="🏫"
+          label={`Stream ${myStream?.streamName || user.streamName} — Students`}
+          value={studentCount}
+          color={tokens.colors.accent}
+          onClick={() => navigate('/students')}
+        />
+
+        <StatCard
+          icon="📦"
+          label="Books Out"
+          value={booksOutCount}
+          color={tokens.colors.info}
+          onClick={() => navigate('/distributions')}
+        />
+
+        <StatCard
+          icon="⚠️"
+          label="Pending Losses"
+          value={pendingLosses.length}
+          color={tokens.colors.warning}
+          onClick={() => navigate('/losses')}
+        />
+
+      </div>
+
+      {/* ── PENDING LOSSES — this stream only ─────────────── */}
+      <div style={{ ...styles.listsGrid, gridTemplateColumns: '1fr' }}>
+        <Card style={styles.listCard}>
+          <div style={styles.listHeader}>
+            <span style={styles.listTitle}>⚠️ Pending Loss Reports</span>
+            <span style={styles.listCount}>{pendingLosses.length} total</span>
+          </div>
+
+          {pendingLosses.length === 0 ? (
+            <div style={styles.emptyState}>🎉 No pending losses</div>
+          ) : (
+            <>
+              {pendingLosses.map((report, index) => (
+                <div key={index} style={styles.listItem}>
+                  <Avatar
+                    name={report.student?.fullName}
+                    size={36}
+                    background={tokens.colors.dangerLight}
+                  />
+                  <div style={styles.listItemLeft}>
+                    <div style={styles.listItemName}>
+                      {report.student?.fullName || 'Unknown Student'}
+                    </div>
+                    <div style={styles.listItemSub}>
+                      {report.bookCopy?.bookDetails?.titleName
+                        || report.bookCopy?.qrCode
+                        || 'Unknown Book'}
+                      {' • '}Flagged {report.dateFlagged}
+                    </div>
+                  </div>
+                  <StatusBadge status={report.source} />
+                </div>
+              ))}
+              <div style={styles.viewAllRow}>
+                <button style={styles.viewAllLink} onClick={() => navigate('/losses')}>
+                  View All →
+                </button>
+              </div>
+            </>
+          )}
+        </Card>
       </div>
     </div>
   );

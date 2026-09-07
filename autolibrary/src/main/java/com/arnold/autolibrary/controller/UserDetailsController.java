@@ -4,13 +4,16 @@ import com.arnold.autolibrary.dto.UserResponse;
 import com.arnold.autolibrary.model.Role;
 import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
+import com.arnold.autolibrary.security.AuthUtil;
 import com.arnold.autolibrary.services.UserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -19,6 +22,30 @@ public class UserDetailsController {
     private UserDetailsService userdetailsService;
     @Autowired
     private UserDetailsRepo userDetailsRepo;
+    @Autowired
+    private AuthUtil authUtil;
+
+    // A teacher may always fetch their own profile — this is the one
+    // /api/users/** endpoint not restricted to LIBRARIAN (see
+    // SecurityConfig). It never accepts an id, so there is nothing to
+    // scope: it always returns the caller's own record.
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyProfile(){
+        UserDetails user = authUtil.getCurrentUser();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", user.getUserId());
+        response.put("fullName", user.getFullName());
+        response.put("userName", user.getUserName());
+        response.put("role", user.getRole());
+
+        if(user.getStream() != null){
+            response.put("streamId", user.getStream().getStreamId());
+            response.put("streamName", user.getStream().getStreamName());
+        }
+
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     public ResponseEntity<?>createUser(@RequestBody UserDetails userDetails){

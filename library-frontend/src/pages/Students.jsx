@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
   studentService,
   classService,
@@ -7,17 +8,21 @@ import {
 import { tokens } from '../styles/tokens';
 import {
   Modal, FormField, Input, Select, Button, Banner, EmptyState,
-  Card, StatusBadge, Avatar, ModalActions,
+  Card, StatusBadge, Avatar, ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Students() {
   const { isMobile } = useScreenSize();
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'TEACHER';
+  const hasNoStream = isTeacher && !user?.streamId;
 
   // Data
   const [classes, setClasses] = useState([]);
   const [streams, setStreams] = useState([]);
   const [students, setStudents] = useState([]);
+  const [myStream, setMyStream] = useState(null); // teacher's own stream, full detail
 
   // Filter selections
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -48,9 +53,22 @@ export default function Students() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // ── LOAD CLASSES ON MOUNT ─────────────────────────────
+  // ── LOAD ON MOUNT ─────────────────────────────────────
+  // Librarian: class → stream cascading selectors, as before.
+  // Teacher: no selector at all — jump straight to their own stream,
+  // resolved from AuthContext (set at login), never from a dropdown.
   useEffect(() => {
-    loadClasses();
+    if (isTeacher) {
+      setLoadingClasses(false);
+      if (user.streamId) {
+        setSelectedStreamId(String(user.streamId));
+        loadMyStream(user.streamId);
+        // loadStudents fires from the selectedStreamId effect below
+      }
+    } else {
+      loadClasses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadClasses = async () => {
@@ -65,8 +83,20 @@ export default function Students() {
     }
   };
 
+  const loadMyStream = async (streamId) => {
+    try {
+      const res = await streamService.getById(streamId);
+      setMyStream(res.data);
+    } catch {
+      // Non-fatal — the summary bar just won't show capacity/teacher.
+    }
+  };
+
   // ── LOAD STREAMS WHEN CLASS SELECTED ─────────────────
+  // Librarian only — a teacher's stream is fixed and never comes from
+  // this class → stream cascade.
   useEffect(() => {
+    if (isTeacher) return;
     if (!selectedClassId) {
       setStreams([]);
       setSelectedStreamId('');
@@ -74,6 +104,7 @@ export default function Students() {
       return;
     }
     loadStreams(selectedClassId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClassId]);
 
   const loadStreams = async (classId) => {
@@ -192,8 +223,12 @@ export default function Students() {
     setError('');
   };
 
-  const selectedStream = streams.find(s => s.streamId === parseInt(selectedStreamId));
-  const selectedClass = classes.find(c => c.classId === parseInt(selectedClassId));
+  const selectedStream = isTeacher
+    ? myStream
+    : streams.find(s => s.streamId === parseInt(selectedStreamId));
+  const selectedClass = isTeacher
+    ? selectedStream?.schoolClass
+    : classes.find(c => c.classId === parseInt(selectedClassId));
 
   // ── LOCAL FILTER ──────────────────────────────────────
   const filteredStudents = students.filter(student => {
@@ -215,11 +250,19 @@ export default function Students() {
       {/* ── PAGE HEADER ──────────────────────────────── */}
       <div style={styles.pageHeader}>
         <div>
-          <h1 style={styles.pageTitle}>Students</h1>
-          <p style={styles.pageSub}>View and manage students by class and stream</p>
+          <h1 style={styles.pageTitle}>
+            {isTeacher
+              ? `Stream ${user?.streamName || ''}`
+              : 'Students'}
+          </h1>
+          <p style={styles.pageSub}>
+            {isTeacher
+              ? `${activeCount} ${activeCount === 1 ? 'student' : 'students'}`
+              : 'View and manage students by class and stream'}
+          </p>
         </div>
 
-        {selectedStreamId && !isMobile && (
+        {selectedStreamId && !isMobile && !hasNoStream && (
           <Button variant="primary" onClick={() => setModal('addStudent')}>
             + Add Student
           </Button>
@@ -230,7 +273,15 @@ export default function Students() {
       {success && <Banner type="success">{success}</Banner>}
       {error && !modal && <Banner type="error">{error}</Banner>}
 
+      {hasNoStream ? (
+        <NoStreamAssigned />
+      ) : (
+      <>
+
       {/* ── FILTER BAR — class / stream pickers ──────── */}
+      {/* Teacher never sees a class/stream selector — their stream is
+          fixed and loaded automatically above. */}
+      {!isTeacher && (
       <Card style={styles.filterBar}>
 
         <div style={styles.filterGroup}>
@@ -311,6 +362,41 @@ export default function Students() {
         )}
 
       </Card>
+      )}
+
+      {/* Teacher: search + active/all toggle, without the class/stream
+          selectors, still available on desktop (mobile gets the sticky
+          bar below). */}
+      {isTeacher && !isMobile && (
+        <Card style={styles.filterBar}>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Search</label>
+            <Input
+              style={{ minWidth: 220 }}
+              placeholder="Name or admission number..."
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+            />
+          </div>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Show</label>
+            <div style={styles.toggleRow}>
+              <button
+                style={{ ...styles.toggleBtn, ...(showInactive ? {} : styles.toggleBtnActive) }}
+                onClick={() => setShowInactive(false)}
+              >
+                Active ({activeCount})
+              </button>
+              <button
+                style={{ ...styles.toggleBtn, ...(showInactive ? styles.toggleBtnActive : {}) }}
+                onClick={() => setShowInactive(true)}
+              >
+                All ({students.length})
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ── STICKY SEARCH BAR — mobile only ──────────── */}
       {selectedStreamId && isMobile && (
@@ -368,10 +454,12 @@ export default function Students() {
       )}
 
       {/* ── MAIN CONTENT AREA ────────────────────────── */}
-      {!selectedClassId ? (
+      {!isTeacher && !selectedClassId ? (
         <EmptyState icon="🎓" title="Select a class to begin" subtitle="Choose a class from the dropdown above to view its streams" />
       ) : !selectedStreamId ? (
-        <EmptyState icon="🏫" title="Select a stream" subtitle="Choose a stream to view its students" />
+        isTeacher
+          ? <div style={styles.loadingText}>Loading your stream…</div>
+          : <EmptyState icon="🏫" title="Select a stream" subtitle="Choose a stream to view its students" />
       ) : loadingStudents ? (
         <div style={styles.loadingText}>Loading students…</div>
       ) : filteredStudents.length === 0 ? (
@@ -497,6 +585,9 @@ export default function Students() {
         >
           + Add Student
         </button>
+      )}
+
+      </>
       )}
 
       {/* ── ADD STUDENT MODAL ────────────────────────── */}

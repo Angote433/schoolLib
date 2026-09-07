@@ -60,6 +60,42 @@ function ProtectedRoute({ children }) {
   return <Layout>{children}</Layout>;
 }
 
+// ── LIBRARIAN ROUTE ───────────────────────────────────────────────────
+// Same as ProtectedRoute, but for pages that are librarian management
+// functions (Users, Classes & Streams, Books, Borrows). A TEACHER
+// hitting one of these URLs directly is sent to the dashboard instead
+// of a page that would just 403 on every API call — the backend is the
+// actual security boundary (see TEACHER_SCOPING_PROMPT.md), this is
+// only the UX layer on top of it.
+function LibrarianRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'Segoe UI, sans-serif',
+        color: '#666',
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (user.role !== 'LIBRARIAN') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Layout>{children}</Layout>;
+}
+
 // ── APP ───────────────────────────────────────────────────────────────
 function App() {
   return (
@@ -78,15 +114,15 @@ function App() {
           } />
 
           <Route path="/classes" element={
-            <ProtectedRoute>
+            <LibrarianRoute>
               <Classes/>
-            </ProtectedRoute>
+            </LibrarianRoute>
           } />
 
           <Route path="/users" element={
-            <ProtectedRoute>
+            <LibrarianRoute>
               <Users/>
-            </ProtectedRoute>
+            </LibrarianRoute>
           } />
 
           <Route path="/students" element={
@@ -96,9 +132,9 @@ function App() {
           } />
 
           <Route path="/books" element={
-            <ProtectedRoute>
+            <LibrarianRoute>
               <Books/>
-            </ProtectedRoute>
+            </LibrarianRoute>
           } />
 
           <Route path="/distributions" element={
@@ -108,9 +144,9 @@ function App() {
           } />
 
           <Route path="/borrows" element={
-            <ProtectedRoute>
+            <LibrarianRoute>
               <Borrows/>
-            </ProtectedRoute>
+            </LibrarianRoute>
           } />
 
           <Route path="/losses" element={

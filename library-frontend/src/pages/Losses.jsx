@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { lossService, studentService } from '../services/libraryApi';
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
   Modal, Input, Button, Banner, StatusBadge, Tabs, Card, Avatar, Textarea,
-  ModalActions,
+  ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Losses() {
   const { isMobile } = useScreenSize();
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'TEACHER';
+  const hasNoStream = isTeacher && !user?.streamId;
+  // Teachers report losses; only a librarian resolves or writes one off.
+  const canResolve = !isTeacher;
 
   const [losses, setLosses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +44,17 @@ export default function Losses() {
 
   // ── LOAD ON MOUNT ─────────────────────────────────────
   useEffect(() => {
+    if (hasNoStream) {
+      setLoading(false);
+      return;
+    }
     loadPending();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload when tab changes
   useEffect(() => {
+    if (hasNoStream) return;
     if (tab === 'pending') loadPending();
     if (tab === 'all') loadAll();
     if (tab !== 'student') {
@@ -104,6 +115,8 @@ export default function Losses() {
     } catch (err) {
       if (err.response?.status === 404) {
         setSearchError(`No student found with admission number "${admNo}". Check and try again.`);
+      } else if (err.response?.status === 403) {
+        setSearchError('That student is not in your stream.');
       } else {
         setSearchError('Failed to search. Is the server running?');
       }
@@ -334,7 +347,7 @@ export default function Losses() {
           <h1 style={styles.pageTitle}>Loss Reports</h1>
           <p style={styles.pageSub}>Track, resolve and export book loss reports</p>
         </div>
-        {!isMobile && (
+        {!isMobile && !hasNoStream && (
           <Button
             variant="accent"
             onClick={() => handleDownloadReport(
@@ -353,6 +366,11 @@ export default function Losses() {
       {/* ── FEEDBACK ─────────────────────────────────── */}
       {success && <Banner type="success">{success}</Banner>}
       {error && !modal && <Banner type="error">{error}</Banner>}
+
+      {hasNoStream ? (
+        <NoStreamAssigned />
+      ) : (
+      <>
 
       {/* ── TABS ─────────────────────────────────────── */}
       <Tabs
@@ -432,7 +450,7 @@ export default function Losses() {
         ) : isMobile ? (
           <div style={styles.lossCardList}>
             {filteredLosses.map(loss => (
-              <LossCard key={loss.reportId} loss={loss} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
+              <LossCard key={loss.reportId} loss={loss} canResolve={canResolve} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
             ))}
           </div>
         ) : (
@@ -457,6 +475,7 @@ export default function Losses() {
                     key={loss.reportId}
                     loss={loss}
                     index={i}
+                    canResolve={canResolve}
                     onResolve={() => openResolve(loss)}
                     onWriteOff={() => openWriteOff(loss)}
                   />
@@ -550,7 +569,7 @@ export default function Losses() {
             ) : isMobile ? (
               <div style={styles.lossCardList}>
                 {studentLosses.map(loss => (
-                  <LossCard key={loss.reportId} loss={loss} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
+                  <LossCard key={loss.reportId} loss={loss} canResolve={canResolve} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
                 ))}
               </div>
             ) : (
@@ -665,12 +684,15 @@ export default function Losses() {
         </Modal>
       )}
 
+      </>
+      )}
+
     </div>
   );
 }
 
 // ── LOSS ROW COMPONENT ────────────────────────────────────────────────
-function LossRow({ loss, index, onResolve, onWriteOff }) {
+function LossRow({ loss, index, canResolve, onResolve, onWriteOff }) {
   const sourceColor = loss.source === 'DISTRIBUTION' ? tokens.colors.info : tokens.colors.danger;
   const isPending = loss.resolutionStatus === 'PENDING';
 
@@ -700,7 +722,7 @@ function LossRow({ loss, index, onResolve, onWriteOff }) {
         {loss.dateResolved && <div style={{ fontSize: 10, color: tokens.colors.textMuted, marginTop: 2 }}>{loss.dateResolved}</div>}
       </td>
       <td style={styles.td}>
-        {isPending ? (
+        {isPending && canResolve ? (
           <div style={styles.actionRow}>
             <Button variant="success" size="sm" onClick={onResolve}>✅ Resolve</Button>
             <Button
@@ -711,6 +733,8 @@ function LossRow({ loss, index, onResolve, onWriteOff }) {
               ⚠️ Write Off
             </Button>
           </div>
+        ) : isPending ? (
+          <span style={{ fontSize: 12, color: tokens.colors.textMuted }}>Pending — reported</span>
         ) : (
           <span style={{ fontSize: 12, color: tokens.colors.textMuted }}>{loss.notes || 'Closed'}</span>
         )}
@@ -720,7 +744,7 @@ function LossRow({ loss, index, onResolve, onWriteOff }) {
 }
 
 // ── LOSS CARD COMPONENT — mobile stacked-list equivalent of LossRow ───
-function LossCard({ loss, onResolve, onWriteOff }) {
+function LossCard({ loss, canResolve, onResolve, onWriteOff }) {
   const sourceColor = loss.source === 'DISTRIBUTION' ? tokens.colors.info : tokens.colors.danger;
   const isPending = loss.resolutionStatus === 'PENDING';
 
@@ -741,7 +765,7 @@ function LossCard({ loss, onResolve, onWriteOff }) {
         {loss.dateResolved && ` • Resolved ${loss.dateResolved}`}
       </div>
 
-      {isPending ? (
+      {isPending && canResolve ? (
         <div style={styles.lossCardActions}>
           <Button variant="success" style={{ flex: 1 }} onClick={onResolve}>✅ Resolve</Button>
           <Button
@@ -751,6 +775,8 @@ function LossCard({ loss, onResolve, onWriteOff }) {
             ⚠️ Write Off
           </Button>
         </div>
+      ) : isPending ? (
+        <div style={styles.lossCardClosedNote}>Pending — a librarian will resolve this</div>
       ) : loss.notes ? (
         <div style={styles.lossCardClosedNote}>{loss.notes}</div>
       ) : null}

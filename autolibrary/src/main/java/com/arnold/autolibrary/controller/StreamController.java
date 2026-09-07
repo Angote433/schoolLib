@@ -1,5 +1,6 @@
 package com.arnold.autolibrary.controller;
 
+import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.SchoolClass;
 import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.services.StreamService;
@@ -36,6 +37,18 @@ public class StreamController {
     @GetMapping("class/{classId}")
     public ResponseEntity<List<Stream>>getStreamsByClass(@PathVariable int classId){
         return ResponseEntity.ok(streamService.getBySchoolClass(classId));
+    }
+
+    // A teacher loads only their own stream this way (no class/stream
+    // selector) — access to any other stream id is scoped in the service.
+    @GetMapping("/{id}")
+    public ResponseEntity<?>getStreamById(@PathVariable int id){
+        try{
+            Stream stream = streamService.getStreamById(id);
+            return ResponseEntity.ok(stream);
+        }catch(RuntimeException e){
+            return ApiErrors.toResponse(e, HttpStatus.NOT_FOUND);
+        }
     }
 
     //Assingning a teacehr to a stream

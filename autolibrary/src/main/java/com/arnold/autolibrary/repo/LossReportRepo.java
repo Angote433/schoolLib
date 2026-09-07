@@ -13,4 +13,10 @@ public interface LossReportRepo extends JpaRepository<LossReport,Integer> {
     List<LossReport> findByResolutionStatus(ResolutionStatus resolutionStatus);
 
     List<LossReport> findByStudentStudentId(int studentId);
+
+    // Teacher-scoped equivalents of findAll()/findByResolutionStatus()
+    List<LossReport> findByStudentStreamStreamId(int streamId);
+
+    List<LossReport> findByResolutionStatusAndStudentStreamStreamId(
+            ResolutionStatus resolutionStatus, int streamId);
 }

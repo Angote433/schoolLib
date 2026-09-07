@@ -16,6 +16,7 @@ export const classService = {
 //STREAMS
 export const streamService = {
   getAll: () => api.get('/streams'),
+  getById: (id) => api.get(`/streams/${id}`),
   getByClass: (classId) => api.get(`/streams/class/${classId}`),
   create: (data, classId) =>
     api.post(`/streams?classId=${classId}`, data),
@@ -26,6 +27,7 @@ export const streamService = {
 // ── USERS ─────────────────────────────────────────────
 export const userService = {
   getAll: () => api.get('/users'),
+  getMe: () => api.get('/users/me'),
   getByRole: (role) => api.get(`/users/role/${role}`),
   create: (data) => api.post('/users', data),
   deactivate: (id) => api.put(`/users/${id}/deactivate`),
@@ -47,6 +49,9 @@ export const studentService = {
   update: (id, data) => api.put(`/students/${id}`, data),
   deactivate: (id) => api.put(`/students/${id}/deactivate`),
   activate: (id) => api.put(`/students/${id}/activate`),
+  // Librarian only — moves a student to a different stream
+  transfer: (id, streamId) =>
+    api.put(`/students/${id}/transfer?streamId=${streamId}`),
   checkExists: (admNo) =>
     api.get(`/students/exists/${admNo}`),
 };

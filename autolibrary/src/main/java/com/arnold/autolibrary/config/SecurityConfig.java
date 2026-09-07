@@ -55,6 +55,16 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
 
                 // Step 5 — define who can access what
+                //
+                // This is layer one of two. Route rules here stop a
+                // request before it reaches a controller at all — they
+                // express *role*. They cannot express "your own stream
+                // only", so any endpoint a TEACHER may call but only for
+                // their own stream's data is scoped a second time, at
+                // the data level, inside the service (see AuthUtil).
+                // Order matters: Spring Security uses first-match-wins,
+                // so a more specific rule must be declared before a
+                // broader one that would otherwise also match it.
                 .authorizeHttpRequests(auth -> auth
 
                         // OPTIONS must be first and fully open
@@ -64,36 +74,56 @@ public class SecurityConfig {
 
                         // Login and registration are public
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/books/copies/{bookId}/qr-image").permitAll()
+
+                        // A teacher may always read their own profile —
+                        // must come before the blanket /api/users/** rule.
+                        .requestMatchers(HttpMethod.GET, "/api/users/me")
+                        .hasAnyRole("LIBRARIAN", "TEACHER")
 
                         // Librarian only endpoints
                         .requestMatchers("/api/users/**")
                         .hasRole("LIBRARIAN")
-                        .requestMatchers(HttpMethod.POST, "/api/books/**")
-                        .hasRole("LIBRARIAN")
-                        .requestMatchers(HttpMethod.POST, "/api/classes/**")
+                        .requestMatchers("/api/classes/**")
                         .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.POST, "/api/streams/**")
                         .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/streams/**")
                         .hasRole("LIBRARIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/streams")
+                        .hasRole("LIBRARIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/streams/class/**")
+                        .hasRole("LIBRARIAN")
+                        .requestMatchers(HttpMethod.POST, "/api/books/**")
+                        .hasRole("LIBRARIAN")
+                        // Sticker/QR printing is a librarian desk task —
+                        // must come before the general GET /api/books/** rule.
+                        .requestMatchers(HttpMethod.GET, "/api/books/copies/*/qr-image")
+                        .hasRole("LIBRARIAN")
+                        // Library borrowing (short-term desk borrowing) is
+                        // a librarian-only function, not a teacher one.
+                        .requestMatchers("/api/borrows/**")
+                        .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/losses/**")
                         .hasRole("LIBRARIAN")
+                        // Moving a student between streams is a librarian
+                        // decision — must come before the general
+                        // /api/students/** rule below.
+                        .requestMatchers(HttpMethod.PUT, "/api/students/*/transfer")
+                        .hasRole("LIBRARIAN")
 
-                        // Both librarian and teacher
+                        // Both librarian and teacher — scoped to the
+                        // caller's own stream at the data level for TEACHER
                         .requestMatchers("/api/students/**")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
                         .requestMatchers("/api/distributions/**")
-                        .hasAnyRole("LIBRARIAN", "TEACHER")
-                        .requestMatchers("/api/borrows/**")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/books/**")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/losses/**")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
-                        .requestMatchers(HttpMethod.GET, "/api/classes/**")
-                        .hasAnyRole("LIBRARIAN", "TEACHER")
-                        .requestMatchers(HttpMethod.GET, "/api/streams/**")
+                        // Single-stream lookup — a teacher may read only
+                        // their own (enforced in StreamService).
+                        .requestMatchers(HttpMethod.GET, "/api/streams/*")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
 
                         // Everything else requires authentication
@@ -117,7 +147,8 @@ public class SecurityConfig {
 
         // Allow requests from React development server
         config.setAllowedOrigins(List.of(
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "http://192.168.100.32:3000"
 
         ));
 

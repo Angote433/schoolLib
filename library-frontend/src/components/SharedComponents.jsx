@@ -457,6 +457,20 @@ export function EmptyState({ icon = '📭', title, subtitle, action }) {
   );
 }
 
+// ── NO STREAM ASSIGNED ────────────────────────────────────────────────
+// Shown instead of a page's normal content when a TEACHER account has
+// no stream yet — never a blank screen, empty table, or spinner that
+// never resolves. Mirrors the backend's 409 "No stream assigned" case.
+export function NoStreamAssigned() {
+  return (
+    <EmptyState
+      icon="🏫"
+      title="You have not been assigned to a stream yet"
+      subtitle="Contact your librarian to be assigned to a stream."
+    />
+  );
+}
+
 // ── TABS (pill or full-width variants) ───────────────────────────────
 export function Tabs({ items, active, onChange, variant = 'card' }) {
   const { isMobile } = useScreenSize();

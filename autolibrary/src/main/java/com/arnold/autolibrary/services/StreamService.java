@@ -6,6 +6,7 @@ import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.repo.SchoolClassRepository;
 import com.arnold.autolibrary.repo.StreamRepo;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
+import com.arnold.autolibrary.security.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -20,6 +21,8 @@ public class StreamService {
     private SchoolClassRepository schoolClassRepository;
     @Autowired
     private UserDetailsRepo userDetailsRepo;
+    @Autowired
+    private AuthUtil authUtil;
     //in a class
 
     @org.springframework.transaction.annotation.Transactional
@@ -96,6 +99,15 @@ public class StreamService {
     }
     public List<Stream>getBySchoolClass(int classId){
         return streamRepo.findStreamsBySchoolClass_ClassId(classId);
+    }
+
+    // Teacher may read only their own stream — used by the teacher
+    // dashboard/students page to load "their" stream without a selector.
+    public Stream getStreamById(int streamId){
+        UserDetails caller = authUtil.getCurrentUser();
+        authUtil.assertCanAccessStream(caller, streamId);
+        return streamRepo.findById(streamId).orElseThrow(
+                ()->new RuntimeException("Stream not found with id "+ streamId));
     }
 
     public Stream deactivateStream(int streamId){

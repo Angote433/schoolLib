@@ -76,15 +76,25 @@ export default function Layout({ children }) {
     if (isCompact) setDrawerOpen(false);
   };
 
-  const visibleNavItems = user?.role === 'TEACHER'
+  const isTeacher = user?.role === 'TEACHER';
+
+  const visibleNavItems = (isTeacher
     ? NAV_ITEMS.filter(item => TEACHER_VISIBLE_PATHS.includes(item.path))
-    : NAV_ITEMS;
+    : NAV_ITEMS
+  ).map(item =>
+    // "Students" reads as "My Students" for a teacher, whose view is
+    // always scoped to their own stream — makes that scope obvious.
+    item.path === '/students' && isTeacher
+      ? { ...item, label: 'My Students' }
+      : item
+  );
 
   const visibleSections = ['Overview', 'People', 'Library'].filter(
     section => visibleNavItems.some(item => item.section === section)
   );
 
-  const currentItem = NAV_ITEMS.find(item => item.path === location.pathname);
+  const currentItem = visibleNavItems.find(item => item.path === location.pathname)
+    || NAV_ITEMS.find(item => item.path === location.pathname);
 
   // Desktop: permanent sidebar, width driven by the collapse toggle.
   // Compact (tablet/mobile): fixed-width drawer that slides in/out.

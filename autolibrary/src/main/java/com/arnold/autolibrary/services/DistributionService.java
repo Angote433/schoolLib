@@ -5,6 +5,7 @@ import com.arnold.autolibrary.repo.BookCopyRepo;
 import com.arnold.autolibrary.repo.DistributionRecordRepo;
 import com.arnold.autolibrary.repo.LossReportRepo;
 import com.arnold.autolibrary.repo.StudentRepo;
+import com.arnold.autolibrary.security.AuthUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,18 +27,27 @@ public class DistributionService {
     @Autowired
     private LossReportRepo lossRepo;
 
+    @Autowired
+    private AuthUtil authUtil;
+
     //Scans qr and assigns student a book
     @Transactional
     public DistributionRecord distributeBook(String qrCode, int studentId, int academicYear,
                                              UserDetails distributedBy){
         /*
+        Find student, confirm caller may act on their stream
         Find book by qr
         Book must be available for distribution
-        Find student
         Student must be active
         Create the distribution record
         Update book status to distributed
          */
+
+        UserDetails caller = authUtil.getCurrentUser();
+        Student student = studRepo.findById(studentId).orElseThrow(
+                ()->new RuntimeException("Student not found ")
+        );
+        authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
 
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(()->
                 new RuntimeException("Book with qr "+qrCode + " not found" ));
@@ -46,9 +56,6 @@ public class DistributionService {
             throw new RuntimeException("This book is currently not available");
         }
 
-        Student student = studRepo.findById(studentId).orElseThrow(
-                ()->new RuntimeException("Student not found ")
-        );
         if(!student.isActive()){
             throw new RuntimeException("Cannot distribute to inactive student");
         }
@@ -69,9 +76,12 @@ public class DistributionService {
         /*
         find the copy
         find active distribution record for this book
+        confirm caller may act on the holder's stream
         update the record
         Set book to available again
          */
+
+        UserDetails caller = authUtil.getCurrentUser();
 
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(
                 ()->new RuntimeException("Book not found ")
@@ -79,6 +89,8 @@ public class DistributionService {
 
         DistributionRecord record = distRepo.findByBookCopyBookIdAndStatus(book.getBookId(),DistributionStatus.DISTRIBUTED)
                 .orElseThrow(()->new RuntimeException("No active distribution for this book"));
+
+        authUtil.assertCanAccessStream(caller, record.getStudent().getStream().getStreamId());
 
         record.setDateReturned(LocalDate.now());
         record.setStatus(DistributionStatus.RETURNED);
@@ -97,12 +109,15 @@ public class DistributionService {
         /*
         Find the book
         Find active distribution to identify the student
+        Confirm caller may act on that student's stream
         Prevent duplicate losses for the same book
         create the loss report
         Update distribution record
         update book status
 
          */
+        UserDetails caller = authUtil.getCurrentUser();
+
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(
                 ()->new RuntimeException("Book not found ")
         );
@@ -113,6 +128,9 @@ public class DistributionService {
                 .orElseThrow(() -> new RuntimeException(
                         "No active distribution found for this book"
                 ));
+
+        authUtil.assertCanAccessStream(caller, record.getStudent().getStream().getStreamId());
+
         boolean alreadyReported = lossRepo.existsByBookCopyBookIdAndResolutionStatus(book.getBookId(),ResolutionStatus.PENDING);
         if(alreadyReported){
             throw new RuntimeException("A loss report for this book exists");
@@ -133,10 +151,23 @@ public class DistributionService {
     }
 
     public List<DistributionRecord> getStudentDistributions(int studentId){
+        UserDetails caller = authUtil.getCurrentUser();
+        Student student = studRepo.findById(studentId).orElseThrow(
+                ()->new RuntimeException("Student not found ")
+        );
+        authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
         return distRepo.findByStudentStudentId(studentId);
     }
+
+    // Teacher gets only their own stream's records for the year, never
+    // the whole school's.
     public List<DistributionRecord>getByYear(int year){
-        return distRepo.findByAcademicYear(year);
+        UserDetails caller = authUtil.getCurrentUser();
+        if(authUtil.isLibrarian(caller)){
+            return distRepo.findByAcademicYear(year);
+        }
+        int streamId = authUtil.getCallerStreamId(caller);
+        return distRepo.findByStudentStreamStreamIdAndAcademicYear(streamId, year);
     }
 
     /*
@@ -146,6 +177,8 @@ public class DistributionService {
     client-side.
      */
     public List<DistributionRecord> getByStreamAndYear(int streamId, int academicYear){
+        UserDetails caller = authUtil.getCurrentUser();
+        authUtil.assertCanAccessStream(caller, streamId);
         return distRepo.findByStudentStreamStreamIdAndAcademicYear(streamId, academicYear);
     }
 
@@ -155,6 +188,8 @@ public class DistributionService {
     so the teacher can tick off the one returning it.
      */
     public List<DistributionRecord> getActiveByIsbnAndStream(String isbn, int streamId){
+        UserDetails caller = authUtil.getCurrentUser();
+        authUtil.assertCanAccessStream(caller, streamId);
         return distRepo.findByStatusAndBookCopyBookDetailsIsbnAndStudentStreamStreamId(
                 DistributionStatus.DISTRIBUTED, isbn, streamId);
     }
@@ -167,6 +202,12 @@ public class DistributionService {
     public DistributionRecord distributeByAccessionNumber(String accessionNumber, int studentId,
                                                            int academicYear, UserDetails distributedBy){
 
+        UserDetails caller = authUtil.getCurrentUser();
+        Student student = studRepo.findById(studentId).orElseThrow(
+                ()->new RuntimeException("Student not found ")
+        );
+        authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
+
         BookCopy book = bookRepo.findByAccessionNumber(accessionNumber).orElseThrow(()->
                 new RuntimeException("No book found with accession number: " + accessionNumber));
 
@@ -174,9 +215,6 @@ public class DistributionService {
             throw new RuntimeException("This copy is not available. Current status: " + book.getStatus());
         }
 
-        Student student = studRepo.findById(studentId).orElseThrow(
-                ()->new RuntimeException("Student not found ")
-        );
         if(!student.isActive()){
             throw new RuntimeException("Cannot distribute to inactive student");
         }

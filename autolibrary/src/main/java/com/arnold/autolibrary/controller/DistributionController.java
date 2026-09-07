@@ -1,10 +1,11 @@
 package com.arnold.autolibrary.controller;
 
+import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.DistributionRecord;
 import com.arnold.autolibrary.model.LossReport;
 import com.arnold.autolibrary.model.UserDetails;
+import com.arnold.autolibrary.security.AuthUtil;
 import com.arnold.autolibrary.services.DistributionService;
-import com.arnold.autolibrary.services.UserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,28 +20,31 @@ public class DistributionController {
     private DistributionService distService;
 
     @Autowired
-    private UserDetailsService userService;
+    private AuthUtil authUtil;
 
     /*
     teacher scans book and assigns student a book from the list
-    caries - qr code,student id,academic year, teacherid of the teacher doing assignment
+    carries - qr code, student id, academic year. Who performed the
+    assignment is always resolved from the caller's own JWT, never from
+    the request body — a teacher could otherwise attribute the action
+    to someone else.
      */
 
     @PostMapping
     public ResponseEntity<?>distributeBook(@RequestBody DistributionRequest request) {
         try {
-            UserDetails user = userService.getUserById(request.getUserId());
+            UserDetails caller = authUtil.getCurrentUser();
 
             DistributionRecord record = distService.distributeBook(
                     request.getQrCode(),
                     request.getStudentId(),
                     request.getAcademicYear(),
-                    user
+                    caller
                     );
 
             return ResponseEntity.status(HttpStatus.CREATED).body(record);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
@@ -55,7 +59,7 @@ public class DistributionController {
             DistributionRecord record = distService.returnBook(qrCode);
             return ResponseEntity.ok(record);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
@@ -66,29 +70,37 @@ public class DistributionController {
     @PostMapping("/loss")
     public ResponseEntity<?>markBookLost(@RequestBody LossRequest request){
         try{
-            UserDetails teacher = userService.getUserById(request.getTeacherId());
+            UserDetails caller = authUtil.getCurrentUser();
 
             LossReport report = distService.flagLost(
                     request.getQrCode(),
                     request.getReason(),
-                    teacher
+                    caller
             );
 
             return ResponseEntity.status(HttpStatus.CREATED).body(report);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
     //Dist records for a specific student over years
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<DistributionRecord>>getStudentDistributions(@PathVariable int studentId){
-        return ResponseEntity.ok(distService.getStudentDistributions(studentId));
+    public ResponseEntity<?>getStudentDistributions(@PathVariable int studentId){
+        try {
+            return ResponseEntity.ok(distService.getStudentDistributions(studentId));
+        } catch (RuntimeException e) {
+            return ApiErrors.toResponse(e);
+        }
     }
 
     @GetMapping("/year/{academicYear}")
-    public ResponseEntity<List<DistributionRecord>>getYearlyDistRecords(@PathVariable int academicYear){
-        return ResponseEntity.ok(distService.getByYear(academicYear));
+    public ResponseEntity<?>getYearlyDistRecords(@PathVariable int academicYear){
+        try {
+            return ResponseEntity.ok(distService.getByYear(academicYear));
+        } catch (RuntimeException e) {
+            return ApiErrors.toResponse(e);
+        }
     }
 
     /*
@@ -96,9 +108,13 @@ public class DistributionController {
     every distribution record for the teacher's stream in a given year.
      */
     @GetMapping("/stream/{streamId}/year/{year}")
-    public ResponseEntity<List<DistributionRecord>>getStreamDistributions(
+    public ResponseEntity<?>getStreamDistributions(
             @PathVariable int streamId, @PathVariable int year){
-        return ResponseEntity.ok(distService.getByStreamAndYear(streamId, year));
+        try {
+            return ResponseEntity.ok(distService.getByStreamAndYear(streamId, year));
+        } catch (RuntimeException e) {
+            return ApiErrors.toResponse(e);
+        }
     }
 
     /*
@@ -111,7 +127,7 @@ public class DistributionController {
             List<DistributionRecord> records = distService.getActiveByIsbnAndStream(isbn, streamId);
             return ResponseEntity.ok(records);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
@@ -122,18 +138,18 @@ public class DistributionController {
     @PostMapping("/by-accession")
     public ResponseEntity<?>distributeByAccession(@RequestBody AccessionDistributionRequest request){
         try{
-            UserDetails teacher = userService.getUserById(request.getTeacherId());
+            UserDetails caller = authUtil.getCurrentUser();
 
             DistributionRecord record = distService.distributeByAccessionNumber(
                     request.getAccessionNumber(),
                     request.getStudentId(),
                     request.getAcademicYear(),
-                    teacher
+                    caller
             );
 
             return ResponseEntity.status(HttpStatus.CREATED).body(record);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 

@@ -8,7 +8,7 @@ import {
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
   Modal, Button, Input, Banner, StatusBadge, Tabs,
-  Card, Avatar, ModalActions,
+  Card, Avatar, ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
 
@@ -23,6 +23,8 @@ const MODES = {
 export default function Distributions() {
   const { user } = useAuth();
   const { isMobile } = useScreenSize();
+  const isTeacher = user?.role === 'TEACHER';
+  const hasNoStream = isTeacher && !user?.streamId;
 
   // Current mode
   const [mode, setMode] = useState(MODES.ASSIGN);
@@ -107,6 +109,10 @@ export default function Distributions() {
   // school instantly, instead of making the librarian pick a stream
   // before they can even start typing a name.
   useEffect(() => {
+    if (hasNoStream) {
+      setLoadingStudents(false);
+      return;
+    }
     setLoadingStudents(true);
     studentService.getAll()
       .then(res => {
@@ -119,10 +125,12 @@ export default function Distributions() {
       .finally(() => setLoadingStudents(false));
 
     loadRecentActivity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto focus the scan input when mode changes
   useEffect(() => {
+    if (hasNoStream) return;
     resetScanState();
     if (mode === MODES.ACTIVE || mode === MODES.UNRETURNED) {
       loadActiveDistributions();
@@ -343,6 +351,11 @@ export default function Distributions() {
           <p style={styles.pageSub}>Assign, return and manage book allocations</p>
         </div>
       </div>
+
+      {hasNoStream ? (
+        <NoStreamAssigned />
+      ) : (
+      <>
 
       {/* ── FEEDBACK ─────────────────────────────────── */}
       {success && <Banner type="success">{success}</Banner>}
@@ -744,6 +757,9 @@ export default function Distributions() {
             </Button>
           </ModalActions>
         </Modal>
+      )}
+
+      </>
       )}
 
     </div>

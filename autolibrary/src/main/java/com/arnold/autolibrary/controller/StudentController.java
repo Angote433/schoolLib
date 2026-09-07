@@ -1,5 +1,6 @@
 package com.arnold.autolibrary.controller;
 
+import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.Student;
 import com.arnold.autolibrary.repo.StudentRepo;
 import com.arnold.autolibrary.services.StudentService;
@@ -25,16 +26,20 @@ public class StudentController {
             Student created = studService.createStudent(student, streamId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
 
     //get all active student in a stream-teachers use this on a mobile app to see classlist
     @GetMapping("/stream/{streamId}")
-    public ResponseEntity<List<Student>>getStudentsByStream(@PathVariable int streamId){
-        List<Student>students = studService.getByStream(streamId);
-        return ResponseEntity.ok(students);
+    public ResponseEntity<?>getStudentsByStream(@PathVariable int streamId){
+        try {
+            List<Student> students = studService.getByStream(streamId);
+            return ResponseEntity.ok(students);
+        } catch (RuntimeException e) {
+            return ApiErrors.toResponse(e);
+        }
     }
 
     //get one student by their admmission
@@ -44,7 +49,7 @@ public class StudentController {
             Student student = studService.getStudentByAdmission(admission);
             return ResponseEntity.ok(student);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ApiErrors.toResponse(e, HttpStatus.NOT_FOUND);
         }
     }
     @PutMapping("/{id}")
@@ -53,7 +58,7 @@ public class StudentController {
             Student updated = studService.updateStudent(id, updatedInfo);
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
    @PutMapping("/{id}/deactivate")
@@ -62,7 +67,7 @@ public class StudentController {
             Student deactivated = studService.deactivateStudent(id);
             return ResponseEntity.ok(deactivated);
         }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
    }
     @PutMapping("/{id}/activate")
@@ -71,13 +76,31 @@ public class StudentController {
             Student activated = studService.activateStudent(id);
             return ResponseEntity.ok(activated);
         }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
+
+    // Librarian only — moving a student to a different stream.
+    // Enforced both here at the route level (SecurityConfig) and again
+    // in the service (AuthUtil.assertLibrarian).
+    @PutMapping("/{id}/transfer")
+    public ResponseEntity<?>transferStudent(@PathVariable int id, @RequestParam int streamId){
+        try{
+            Student transferred = studService.transferStudent(id, streamId);
+            return ResponseEntity.ok(transferred);
+        }catch(RuntimeException e){
+            return ApiErrors.toResponse(e);
+        }
+    }
+
     @GetMapping
-    public ResponseEntity<List<Student>>getAllStudents(){
-        List<Student>students = studService.getAllStudents();
-        return ResponseEntity.ok(students);
+    public ResponseEntity<?>getAllStudents(){
+        try {
+            List<Student> students = studService.getAllStudents();
+            return ResponseEntity.ok(students);
+        } catch (RuntimeException e) {
+            return ApiErrors.toResponse(e);
+        }
     }
 
 
@@ -88,7 +111,7 @@ public class StudentController {
             boolean exists = studService.admissionExists(admissionNumber);
             return ResponseEntity.ok(exists);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.toResponse(e);
         }
     }
 
