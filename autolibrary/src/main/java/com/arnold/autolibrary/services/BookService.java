@@ -65,6 +65,7 @@ public class BookService {
         return copies;
     }
 
+
     public BookCopy findByQR(String qrCode){
         return bookCopyRepo.findByQrCode(qrCode).orElseThrow(()
         -> new RuntimeException("No book found with qr code "+ qrCode
