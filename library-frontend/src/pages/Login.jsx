@@ -4,8 +4,10 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { tokens } from '../styles/tokens';
 import { Input, Button, Banner } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 export default function Login() {
+  const { isMobile } = useScreenSize();
 
   // Form state — tracks what the user types
   const [userName, setUserName] = useState('');
@@ -71,7 +73,7 @@ export default function Login() {
     <div style={styles.page}>
       <div style={styles.decorLayer} />
 
-      <div style={styles.card}>
+      <div style={{ ...styles.card, ...(isMobile ? { padding: '32px 24px' } : {}) }}>
 
         {/* Header */}
         <div style={styles.header}>

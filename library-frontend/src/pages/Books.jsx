@@ -3,8 +3,9 @@ import { bookService } from '../services/libraryApi';
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
   Modal, FormField, Input, Select, Button, Banner, EmptyState,
-  Card, StatusBadge,
+  Card, StatusBadge, ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 const STICKER_LAYOUTS = {
   '4x5': { labelCols: 4, labelRows: 5, orientation: 'landscape', labelWidthMm: 63.5, labelHeightMm: 38.1, gapMm: 4 },
@@ -14,6 +15,7 @@ const STICKER_LAYOUTS = {
 };
 
 export default function Books() {
+  const { isMobile } = useScreenSize();
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -285,7 +287,10 @@ export default function Books() {
               <Card key={book.detailsId} style={{ padding: 0, overflow: 'hidden' }}>
 
                 {/* ── BOOK TITLE ROW ─────────────────── */}
-                <div style={styles.bookRow} onClick={() => handleExpandBook(book.detailsId)}>
+                <div
+                  style={{ ...styles.bookRow, ...(isMobile ? { flexWrap: 'wrap', gap: 10 } : {}) }}
+                  onClick={() => handleExpandBook(book.detailsId)}
+                >
                   <div style={styles.bookLeft}>
                     <span style={styles.arrow}>{isExpanded ? '▼' : '▶'}</span>
                     <div style={styles.bookIcon}>{book.gradeLevel}</div>
@@ -364,6 +369,7 @@ export default function Books() {
       {/* ── STICKY PRINT SELECTION BAR ───────────────── */}
       <div style={{
         ...styles.stickyPrintBar,
+        ...(isMobile ? { padding: '12px 16px', flexWrap: 'wrap', gap: 10 } : {}),
         transform: selectedForPrint.size > 0 ? 'translateY(0)' : 'translateY(100%)',
       }}>
         <span style={styles.stickyPrintCount}>
@@ -427,12 +433,12 @@ export default function Books() {
                 onChange={e => setTitleForm({ ...titleForm, isbn: e.target.value })}
               />
             </FormField>
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting ? 'Registering…' : 'Register Title'}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -467,14 +473,14 @@ export default function Books() {
               />
             </FormField>
 
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting
                   ? 'Registering…'
                   : `Register ${copiesForm.quantity} ${copiesForm.quantity === 1 ? 'Copy' : 'Copies'}`}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -490,6 +496,12 @@ export default function Books() {
               The QR code ID and book title print below each code so you know which sticker goes on which book.
             </p>
           </div>
+
+          {isMobile && (
+            <Banner type="info">
+              🖨️ Printing sticker sheets is best done from a desktop or laptop browser connected to your printer.
+            </Banner>
+          )}
 
           <FormField label="Sticker sheet layout" hint="Choose the sticker paper format you are using.">
             <Select value={printLayout} onChange={e => setPrintLayout(e.target.value)}>
@@ -516,10 +528,10 @@ export default function Books() {
             ))}
           </div>
 
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="accent" onClick={triggerPrint}>🖨️ Print Now</Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -646,7 +658,6 @@ const styles = {
     zIndex: 90,
   },
   stickyPrintCount: { color: '#fff', fontSize: 14, fontWeight: 600 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
   printPreviewNote: { background: tokens.colors.surface, borderRadius: tokens.radius.sm, padding: '12px 14px', marginBottom: 16 },
   printPreviewGrid: {
     display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',

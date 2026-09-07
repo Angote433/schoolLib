@@ -8,8 +8,9 @@ import {
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
   Modal, Button, Input, Banner, StatusBadge, Tabs,
-  Card, Avatar,
+  Card, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 // The four modes of this page
 const MODES = {
@@ -21,6 +22,7 @@ const MODES = {
 
 export default function Distributions() {
   const { user } = useAuth();
+  const { isMobile } = useScreenSize();
 
   // Current mode
   const [mode, setMode] = useState(MODES.ASSIGN);
@@ -470,11 +472,11 @@ export default function Distributions() {
       )}
 
       {/* ── MAIN WORK AREA ───────────────────────────── */}
-      <div style={styles.workArea}>
+      <div style={{ ...styles.workArea, ...(isMobile ? { flexDirection: 'column' } : {}) }}>
 
         {/* ── LEFT PANEL — SCAN (assign/return only) ── */}
         {(mode === MODES.ASSIGN || mode === MODES.RETURN) && (
-        <div style={styles.leftPanel}>
+        <div style={{ ...styles.leftPanel, ...(isMobile ? { flex: '1 1 auto', width: '100%' } : {}) }}>
 
           <Card>
             <div style={styles.scanLabel}>
@@ -491,7 +493,7 @@ export default function Distributions() {
               <span style={styles.scanInputIcon}>🔎</span>
               <Input
                 ref={scanInputRef}
-                style={styles.scanInput}
+                style={{ ...styles.scanInput, ...(isMobile ? { fontSize: 16, height: 52 } : {}) }}
                 placeholder={
                   mode === MODES.ASSIGN
                     ? 'Type accession number from inside book cover...'
@@ -502,7 +504,11 @@ export default function Distributions() {
                 onKeyDown={handleScan}
                 autoComplete="off"
               />
-              <Button variant="primary" style={styles.scanLookupBtn} onClick={() => handleScan({ key: 'Enter' })}>
+              <Button
+                variant="primary"
+                style={{ ...styles.scanLookupBtn, ...(isMobile ? { height: 52 } : {}) }}
+                onClick={() => handleScan({ key: 'Enter' })}
+              >
                 Look Up
               </Button>
             </div>
@@ -571,16 +577,19 @@ export default function Distributions() {
                     <div style={styles.loadingText}>No active distributions found for this title</div>
                   ) : (
                     returnCandidates.map((record, i) => (
-                      <div key={i} style={styles.returnRow}>
-                        <Avatar name={record.student?.fullName} size={30} background={tokens.colors.primary} />
-                        <div style={styles.returnStudentInfo}>
-                          <div style={styles.returnStudentName}>{record.student?.fullName}</div>
-                          <div style={styles.returnStudentMeta}>
-                            {record.student?.admissionNumber}{' • '}Issued: {record.dateDistributed}
+                      <div key={i} style={isMobile ? styles.returnRowMobile : styles.returnRow}>
+                        <div style={styles.returnRowTop}>
+                          <Avatar name={record.student?.fullName} size={30} background={tokens.colors.primary} />
+                          <div style={styles.returnStudentInfo}>
+                            <div style={styles.returnStudentName}>{record.student?.fullName}</div>
+                            <div style={styles.returnStudentMeta}>
+                              {record.student?.admissionNumber}{' • '}Issued: {record.dateDistributed}
+                            </div>
                           </div>
                         </div>
                         <Button
-                          variant="accent" size="sm"
+                          variant="accent" size={isMobile ? 'md' : 'sm'}
+                          style={isMobile ? { width: '100%' } : {}}
                           onClick={() => handleReturnByRecord(record)}
                           disabled={submitting}
                         >
@@ -728,12 +737,12 @@ export default function Distributions() {
             This action will create a loss report. The book will be marked as LOST in the system.
           </Banner>
 
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={cancelFlagLost} disabled={submitting}>Cancel</Button>
             <Button variant="danger" onClick={confirmFlagLost} disabled={submitting}>
               {submitting ? 'Processing…' : '⚠️ Flag as Lost'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -793,6 +802,8 @@ const styles = {
   returnTable: { marginTop: 14, border: `1.5px solid ${tokens.colors.border}`, borderRadius: tokens.radius.sm, overflow: 'hidden' },
   returnTableHeader: { background: tokens.colors.surface, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: tokens.colors.textSecondary, borderBottom: `1px solid ${tokens.colors.border}` },
   returnRow: { display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${tokens.colors.surface}`, gap: 10 },
+  returnRowMobile: { display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderBottom: `1px solid ${tokens.colors.surface}` },
+  returnRowTop: { display: 'flex', alignItems: 'center', gap: 10 },
   returnStudentInfo: { flex: 1 },
   returnStudentName: { fontSize: 13, fontWeight: 600, color: tokens.colors.textPrimary },
   returnStudentMeta: { fontSize: 11, color: tokens.colors.textMuted, marginTop: 2 },
@@ -852,5 +863,4 @@ const styles = {
   modalSection: { marginBottom: 16 },
   modalLabel: { display: 'block', fontSize: 11, fontWeight: 700, color: tokens.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   modalValue: { fontSize: 14, fontWeight: 600, color: tokens.colors.textPrimary, padding: '10px 12px', background: tokens.colors.surface, borderRadius: tokens.radius.sm },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 };

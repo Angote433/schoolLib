@@ -3,9 +3,12 @@ import { lossService, studentService } from '../services/libraryApi';
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
   Modal, Input, Button, Banner, StatusBadge, Tabs, Card, Avatar, Textarea,
+  ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 export default function Losses() {
+  const { isMobile } = useScreenSize();
 
   const [losses, setLosses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -331,18 +334,20 @@ export default function Losses() {
           <h1 style={styles.pageTitle}>Loss Reports</h1>
           <p style={styles.pageSub}>Track, resolve and export book loss reports</p>
         </div>
-        <Button
-          variant="accent"
-          onClick={() => handleDownloadReport(
-            tab === 'student' ? studentLosses : filteredLosses,
-            tab === 'pending' ? 'Pending Loss Reports'
-            : tab === 'student' && searchedStudent
-            ? `Loss Report — ${searchedStudent.fullName}`
-            : 'All Loss Reports'
-          )}
-        >
-          ⬇️ Download Report
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="accent"
+            onClick={() => handleDownloadReport(
+              tab === 'student' ? studentLosses : filteredLosses,
+              tab === 'pending' ? 'Pending Loss Reports'
+              : tab === 'student' && searchedStudent
+              ? `Loss Report — ${searchedStudent.fullName}`
+              : 'All Loss Reports'
+            )}
+          >
+            ⬇️ Download Report
+          </Button>
+        )}
       </div>
 
       {/* ── FEEDBACK ─────────────────────────────────── */}
@@ -361,14 +366,35 @@ export default function Losses() {
         ]}
       />
 
+      {/* ── DOWNLOAD ROW — mobile only, kept out of the tab bar ── */}
+      {isMobile && (
+        <Button
+          variant="accent"
+          style={{ width: '100%', marginBottom: tokens.spacing.md }}
+          onClick={() => handleDownloadReport(
+            tab === 'student' ? studentLosses : filteredLosses,
+            tab === 'pending' ? 'Pending Loss Reports'
+            : tab === 'student' && searchedStudent
+            ? `Loss Report — ${searchedStudent.fullName}`
+            : 'All Loss Reports'
+          )}
+        >
+          ⬇️ Download Report
+        </Button>
+      )}
+
       {/* ── SOURCE FILTER (pending + all tabs) ───────── */}
       {(tab === 'pending' || tab === 'all') && (
-        <div style={styles.filterRow}>
-          <span style={styles.filterRowLabel}>Source:</span>
+        <div style={isMobile ? styles.filterRowMobile : styles.filterRow}>
+          {!isMobile && <span style={styles.filterRowLabel}>Source:</span>}
           {['ALL', 'DISTRIBUTION', 'BORROWING'].map(src => (
             <button
               key={src}
-              style={{ ...styles.filterChip, ...(sourceFilter === src ? styles.filterChipActive : {}) }}
+              style={{
+                ...styles.filterChip,
+                ...(sourceFilter === src ? styles.filterChipActive : {}),
+                ...(isMobile ? { minHeight: 40, flexShrink: 0 } : {}),
+              }}
               onClick={() => setSourceFilter(src)}
             >
               {src === 'ALL' ? 'All' : src === 'DISTRIBUTION' ? '📦 Distribution' : '📖 Borrowing'}
@@ -377,6 +403,7 @@ export default function Losses() {
           {filteredLosses.length > 0 && (
             <Button
               variant="secondary" size="sm"
+              style={isMobile ? { flexShrink: 0 } : {}}
               onClick={() => handleDownloadReport(
                 filteredLosses,
                 sourceFilter === 'ALL' ? 'Loss Report' : `${sourceFilter} Loss Report`
@@ -388,12 +415,12 @@ export default function Losses() {
         </div>
       )}
 
-      {/* ── PENDING / ALL LOSS TABLE ─────────────────── */}
+      {/* ── PENDING / ALL LOSS LIST ───────────────────── */}
       {(tab === 'pending' || tab === 'all') && (
-        <Card style={{ padding: 0, overflow: 'hidden', overflowX: 'auto' }}>
-          {loading ? (
-            <div style={styles.loadingText}>Loading loss reports…</div>
-          ) : filteredLosses.length === 0 ? (
+        loading ? (
+          <Card><div style={styles.loadingText}>Loading loss reports…</div></Card>
+        ) : filteredLosses.length === 0 ? (
+          <Card>
             <div style={styles.emptyState}>
               <div style={styles.emptyIcon}>{tab === 'pending' ? '🎉' : '📋'}</div>
               <div style={styles.emptyTitle}>{tab === 'pending' ? 'No pending loss reports' : 'No loss reports found'}</div>
@@ -401,7 +428,15 @@ export default function Losses() {
                 {tab === 'pending' ? 'All losses have been resolved' : 'Loss reports will appear here when books are flagged'}
               </div>
             </div>
-          ) : (
+          </Card>
+        ) : isMobile ? (
+          <div style={styles.lossCardList}>
+            {filteredLosses.map(loss => (
+              <LossCard key={loss.reportId} loss={loss} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
+            ))}
+          </div>
+        ) : (
+          <Card style={{ padding: 0, overflow: 'hidden', overflowX: 'auto' }}>
             <table style={styles.table}>
               <thead>
                 <tr>
@@ -428,8 +463,8 @@ export default function Losses() {
                 ))}
               </tbody>
             </table>
-          )}
-        </Card>
+          </Card>
+        )
       )}
 
       {/* ── BY STUDENT TAB ───────────────────────────── */}
@@ -442,9 +477,9 @@ export default function Losses() {
             <p style={styles.searchHint}>
               Enter the student's admission number and press Search or hit Enter.
             </p>
-            <div style={styles.searchRow}>
+            <div style={isMobile ? styles.searchRowMobile : styles.searchRow}>
               <Input
-                style={styles.admInput}
+                style={isMobile ? styles.admInputMobile : styles.admInput}
                 placeholder="e.g. ADM2025001"
                 value={admissionInput}
                 onChange={e => {
@@ -458,7 +493,10 @@ export default function Losses() {
                 onKeyDown={handleKeyDown}
                 autoFocus
               />
-              <Button variant="primary" onClick={handleStudentSearch} disabled={searchLoading} style={{ height: 40 }}>
+              <Button
+                variant="primary" onClick={handleStudentSearch} disabled={searchLoading}
+                style={isMobile ? { width: '100%' } : { height: 40 }}
+              >
                 {searchLoading ? 'Searching…' : 'Search'}
               </Button>
             </div>
@@ -468,7 +506,7 @@ export default function Losses() {
 
           {/* ── STUDENT PROFILE ──────────────────────── */}
           {searchedStudent && (
-            <div style={styles.studentProfile}>
+            <div style={{ ...styles.studentProfile, ...(isMobile ? styles.studentProfileMobile : {}) }}>
               <Avatar name={searchedStudent.fullName} size={48} background="rgba(255,255,255,0.15)" />
               <div style={styles.profileInfo}>
                 <div style={styles.profileName}>{searchedStudent.fullName}</div>
@@ -487,7 +525,10 @@ export default function Losses() {
               {studentLosses.length > 0 && (
                 <Button
                   variant="secondary"
-                  style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)',
+                    ...(isMobile ? { width: '100%' } : {}),
+                  }}
                   onClick={() => handleDownloadReport(studentLosses, `Loss Report — ${searchedStudent.fullName}`)}
                 >
                   ⬇️ Download Report
@@ -496,16 +537,24 @@ export default function Losses() {
             </div>
           )}
 
-          {/* ── STUDENT LOSS TABLE ───────────────────── */}
+          {/* ── STUDENT LOSS LIST ─────────────────────── */}
           {searchedStudent && (
-            <Card style={{ padding: 0, overflow: 'hidden', overflowX: 'auto' }}>
-              {studentLosses.length === 0 ? (
+            studentLosses.length === 0 ? (
+              <Card>
                 <div style={styles.emptyState}>
                   <div style={styles.emptyIcon}>✅</div>
                   <div style={styles.emptyTitle}>No loss records</div>
                   <div style={styles.emptySub}>{searchedStudent.fullName} has no loss reports</div>
                 </div>
-              ) : (
+              </Card>
+            ) : isMobile ? (
+              <div style={styles.lossCardList}>
+                {studentLosses.map(loss => (
+                  <LossCard key={loss.reportId} loss={loss} onResolve={() => openResolve(loss)} onWriteOff={() => openWriteOff(loss)} />
+                ))}
+              </div>
+            ) : (
+              <Card style={{ padding: 0, overflow: 'hidden', overflowX: 'auto' }}>
                 <table style={styles.table}>
                   <thead>
                     <tr>
@@ -532,8 +581,8 @@ export default function Losses() {
                     ))}
                   </tbody>
                 </table>
-              )}
-            </Card>
+              </Card>
+            )
           )}
 
           {/* ── INITIAL EMPTY STATE ──────────────────── */}
@@ -573,12 +622,12 @@ export default function Losses() {
               rows={3}
             />
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="success" onClick={handleResolve} disabled={submitting}>
               {submitting ? 'Resolving…' : '✅ Mark Resolved'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -603,7 +652,7 @@ export default function Losses() {
               rows={3}
             />
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button
               onClick={handleWriteOff}
@@ -612,7 +661,7 @@ export default function Losses() {
             >
               {submitting ? 'Processing…' : '⚠️ Write Off'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -670,6 +719,45 @@ function LossRow({ loss, index, onResolve, onWriteOff }) {
   );
 }
 
+// ── LOSS CARD COMPONENT — mobile stacked-list equivalent of LossRow ───
+function LossCard({ loss, onResolve, onWriteOff }) {
+  const sourceColor = loss.source === 'DISTRIBUTION' ? tokens.colors.info : tokens.colors.danger;
+  const isPending = loss.resolutionStatus === 'PENDING';
+
+  return (
+    <Card style={{ ...styles.lossCard, borderLeft: `4px solid ${sourceColor}` }}>
+      <div style={styles.lossCardTitle}>{loss.bookCopy?.bookDetails?.titleName || '—'}</div>
+      <div style={styles.lossCardStudent}>{loss.student?.fullName || '—'} • {loss.student?.admissionNumber}</div>
+
+      <div style={styles.lossCardBadges}>
+        <StatusBadge status={loss.source} />
+        <StatusBadge status={loss.resolutionStatus} label={loss.resolutionStatus?.replace('_', ' ')} />
+      </div>
+
+      {loss.reason && <div style={styles.lossCardReason}>{loss.reason}</div>}
+
+      <div style={styles.lossCardMeta}>
+        Flagged {loss.dateFlagged}
+        {loss.dateResolved && ` • Resolved ${loss.dateResolved}`}
+      </div>
+
+      {isPending ? (
+        <div style={styles.lossCardActions}>
+          <Button variant="success" style={{ flex: 1 }} onClick={onResolve}>✅ Resolve</Button>
+          <Button
+            style={{ flex: 1, background: tokens.colors.warningLight, color: tokens.colors.warning, border: `1.5px solid ${tokens.colors.warningBorder}` }}
+            onClick={onWriteOff}
+          >
+            ⚠️ Write Off
+          </Button>
+        </div>
+      ) : loss.notes ? (
+        <div style={styles.lossCardClosedNote}>{loss.notes}</div>
+      ) : null}
+    </Card>
+  );
+}
+
 // ── STYLES ────────────────────────────────────────────────────────────
 const styles = {
   pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: tokens.spacing.lg, flexWrap: 'wrap', gap: 12 },
@@ -677,6 +765,7 @@ const styles = {
   pageSub: { margin: '4px 0 0', color: tokens.colors.textSecondary, fontSize: 14 },
 
   filterRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: tokens.spacing.md, flexWrap: 'wrap' },
+  filterRowMobile: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: tokens.spacing.md, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 },
   filterRowLabel: { fontSize: 13, fontWeight: 600, color: tokens.colors.textMuted },
   filterChip: {
     padding: '5px 14px', borderRadius: tokens.radius.full,
@@ -685,6 +774,17 @@ const styles = {
     cursor: 'pointer', fontFamily: tokens.font.family,
   },
   filterChipActive: { background: tokens.colors.primary, color: '#fff', border: `1.5px solid ${tokens.colors.primary}`, fontWeight: 700 },
+
+  // ── Mobile loss card list ────────────────────────────────────────
+  lossCardList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  lossCard: { padding: 14 },
+  lossCardTitle: { fontWeight: 700, fontSize: 14, color: tokens.colors.textPrimary },
+  lossCardStudent: { fontSize: 12, color: tokens.colors.textSecondary, marginTop: 2 },
+  lossCardBadges: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' },
+  lossCardReason: { fontSize: 12, color: tokens.colors.textSecondary, marginTop: 8, lineHeight: 1.5 },
+  lossCardMeta: { fontSize: 11, color: tokens.colors.textMuted, marginTop: 8 },
+  lossCardActions: { display: 'flex', gap: 8, marginTop: 12 },
+  lossCardClosedNote: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 10, fontStyle: 'italic' },
 
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 },
   th: {
@@ -708,20 +808,22 @@ const styles = {
   searchTitle: { fontSize: 15, fontWeight: 700, color: tokens.colors.textPrimary, marginBottom: 6 },
   searchHint: { fontSize: 13, color: tokens.colors.textMuted, margin: '0 0 14px', lineHeight: 1.5 },
   searchRow: { display: 'flex', gap: 10 },
+  searchRowMobile: { display: 'flex', flexDirection: 'column', gap: 10 },
   admInput: { flex: 1, maxWidth: 320, fontFamily: tokens.font.mono, border: `2px solid ${tokens.colors.primary}`, background: tokens.colors.surface },
+  admInputMobile: { width: '100%', fontFamily: tokens.font.mono, border: `2px solid ${tokens.colors.primary}`, background: tokens.colors.surface },
 
   studentProfile: {
     background: `linear-gradient(120deg, ${tokens.colors.primary}, ${tokens.colors.primaryDark})`,
     borderRadius: tokens.radius.md, padding: '16px 22px', display: 'flex',
     alignItems: 'center', gap: 14, boxShadow: tokens.shadows.md,
   },
+  studentProfileMobile: { flexDirection: 'column', alignItems: 'flex-start', gap: 10 },
   profileInfo: { flex: 1 },
   profileName: { color: '#fff', fontWeight: 700, fontSize: 17 },
   profileMeta: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
   profileLossCount: { color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 3 },
 
   modalLabel: { display: 'block', fontSize: 13, fontWeight: 600, color: tokens.colors.textSecondary, marginBottom: 6 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
   lossModalSummary: { background: tokens.colors.surface, borderRadius: tokens.radius.sm, padding: '12px 14px', marginBottom: 14 },
   lossModalBook: { fontWeight: 700, fontSize: 14, color: tokens.colors.textPrimary, marginBottom: 4 },
   lossModalStudent: { fontSize: 13, color: tokens.colors.textSecondary },

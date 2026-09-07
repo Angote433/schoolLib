@@ -3,6 +3,14 @@
 // radius across the entire web app. Import this into every page/
 // component instead of hardcoding raw hex values or pixel numbers.
 
+// ── BREAKPOINTS ───────────────────────────────────────────────────────
+// Consumed by hooks/useScreenSize.js — kept here alongside the rest of
+// the design tokens so there is one source of truth for spacing/sizing.
+export const breakpoints = {
+  mobile: 640,
+  tablet: 1024,
+};
+
 export const tokens = {
   colors: {
     primary: '#1B2B4B',

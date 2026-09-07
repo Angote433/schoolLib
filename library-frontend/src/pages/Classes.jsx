@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { classService, streamService, userService } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import {
-  Modal, FormField, Input, Button, Banner, EmptyState, Card, Avatar,
+  Modal, FormField, Input, Button, Banner, EmptyState, Card, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 export default function Classes() {
+  const { isMobile } = useScreenSize();
 
   // All classes from the database
   const [classes, setClasses] = useState([]);
@@ -246,7 +248,10 @@ export default function Classes() {
               <Card key={cls.classId} style={{ padding: 0, overflow: 'hidden' }}>
 
                 {/* ── CLASS ROW ──────────────────────── */}
-                <div style={styles.classRow} onClick={() => handleExpandClass(cls.classId)}>
+                <div
+                  style={{ ...styles.classRow, ...(isMobile ? { flexWrap: 'wrap', gap: 10 } : {}) }}
+                  onClick={() => handleExpandClass(cls.classId)}
+                >
                   <div style={styles.classLeft}>
                     <span style={styles.arrow}>{isExpanded ? '▼' : '▶'}</span>
                     <div style={styles.classIcon}>{cls.gradeLevel}</div>
@@ -331,12 +336,12 @@ export default function Classes() {
               />
             </FormField>
 
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting ? 'Creating…' : 'Create Class'}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -365,12 +370,12 @@ export default function Classes() {
               />
             </FormField>
 
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting ? 'Creating…' : 'Create Stream'}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -416,7 +421,7 @@ export default function Classes() {
                 ))}
               </div>
 
-              <div style={styles.modalActions}>
+              <ModalActions>
                 <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
                 <Button
                   variant="primary"
@@ -425,7 +430,7 @@ export default function Classes() {
                 >
                   {submitting ? 'Assigning…' : 'Assign Teacher'}
                 </Button>
-              </div>
+              </ModalActions>
             </>
           )}
         </Modal>
@@ -500,8 +505,6 @@ const styles = {
   streamsGrid: {
     display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12,
   },
-
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 
   assignNote: { fontSize: 14, color: tokens.colors.textSecondary, marginBottom: 14, lineHeight: 1.5 },
   teacherList: {

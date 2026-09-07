@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { tokens, getStatusColor } from '../styles/tokens';
+import useScreenSize from '../hooks/useScreenSize';
 
 // ── SHARED UI COMPONENTS ─────────────────────────────────────────────
 // Reusable building blocks used across every page — Modal, FormField,
@@ -8,26 +9,31 @@ import { tokens, getStatusColor } from '../styles/tokens';
 // that uses these automatically stays visually consistent.
 
 // ── MODAL ─────────────────────────────────────────────────────────────
+// Desktop: centered dialog, as before.
+// Mobile/tablet: full-screen overlay with a sticky footer, so action
+// buttons stay reachable without hunting for them while scrolling.
 export function Modal({ title, onClose, children, maxWidth = 480 }) {
+  const { isDesktop } = useScreenSize();
+
   return (
-    <div style={modalStyles.backdrop} onClick={onClose}>
+    <div style={isDesktop ? modalStyles.backdrop : modalStyles.backdropFull} onClick={isDesktop ? onClose : undefined}>
       <div
-        style={{ ...modalStyles.box, maxWidth }}
+        style={isDesktop ? { ...modalStyles.box, maxWidth } : modalStyles.boxFull}
         onClick={e => e.stopPropagation()}
       >
-        <div style={modalStyles.header}>
+        <div style={isDesktop ? modalStyles.header : modalStyles.headerFull}>
           <h3 style={modalStyles.title}>{title}</h3>
           <button
-            style={modalStyles.closeBtn}
+            style={isDesktop ? modalStyles.closeBtn : modalStyles.closeBtnFull}
             onClick={onClose}
             onMouseEnter={e => e.currentTarget.style.background = tokens.colors.surface}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            onMouseLeave={e => e.currentTarget.style.background = isDesktop ? 'transparent' : tokens.colors.surface}
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <div style={modalStyles.body}>{children}</div>
+        <div style={isDesktop ? modalStyles.body : modalStyles.bodyFull}>{children}</div>
       </div>
     </div>
   );
@@ -72,6 +78,36 @@ const modalStyles = {
   footer: {
     display: 'flex', justifyContent: 'flex-end', gap: 10,
     padding: '16px 24px', borderTop: `1px solid ${tokens.colors.border}`,
+  },
+
+  // ── Mobile/tablet full-screen variants ──────────────────────────
+  backdropFull: {
+    position: 'fixed', inset: 0,
+    background: tokens.colors.card,
+    zIndex: 1000,
+  },
+  boxFull: {
+    width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    background: tokens.colors.card,
+  },
+  headerFull: {
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', padding: '16px 16px 16px 20px',
+    borderBottom: `1px solid ${tokens.colors.border}`,
+    position: 'sticky', top: 0, background: tokens.colors.card, zIndex: 1,
+    flexShrink: 0,
+  },
+  closeBtnFull: {
+    width: 44, height: 44, borderRadius: '50%',
+    background: tokens.colors.surface, border: 'none',
+    fontSize: 18, cursor: 'pointer', color: tokens.colors.textSecondary,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: tokens.transition, flexShrink: 0,
+  },
+  bodyFull: {
+    padding: '18px 20px 24px', overflowY: 'auto', flex: 1,
+    WebkitOverflowScrolling: 'touch',
   },
 };
 
@@ -118,6 +154,14 @@ const baseFieldStyle = {
   transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
 };
 
+// On mobile every field gets a 16px minimum font size — anything smaller
+// makes iOS Safari auto-zoom into the field on focus — plus a taller
+// tap target.
+const mobileFieldStyle = {
+  fontSize: 16,
+  height: 44,
+};
+
 function focusHandlers(onFocus, onBlur) {
   return {
     onFocus: e => {
@@ -134,10 +178,11 @@ function focusHandlers(onFocus, onBlur) {
 }
 
 export const Input = forwardRef(function Input({ style, onFocus, onBlur, ...props }, ref) {
+  const { isMobile } = useScreenSize();
   return (
     <input
       ref={ref}
-      style={{ ...baseFieldStyle, ...style }}
+      style={{ ...baseFieldStyle, ...(isMobile ? mobileFieldStyle : {}), ...style }}
       {...focusHandlers(onFocus, onBlur)}
       {...props}
     />
@@ -145,10 +190,11 @@ export const Input = forwardRef(function Input({ style, onFocus, onBlur, ...prop
 });
 
 export const Select = forwardRef(function Select({ style, onFocus, onBlur, children, ...props }, ref) {
+  const { isMobile } = useScreenSize();
   return (
     <select
       ref={ref}
-      style={{ ...baseFieldStyle, cursor: 'pointer', ...style }}
+      style={{ ...baseFieldStyle, cursor: 'pointer', ...(isMobile ? mobileFieldStyle : {}), ...style }}
       {...focusHandlers(onFocus, onBlur)}
       {...props}
     >
@@ -158,13 +204,14 @@ export const Select = forwardRef(function Select({ style, onFocus, onBlur, child
 });
 
 export const Textarea = forwardRef(function Textarea({ style, onFocus, onBlur, rows = 3, ...props }, ref) {
+  const { isMobile } = useScreenSize();
   return (
     <textarea
       ref={ref}
       rows={rows}
       style={{
         ...baseFieldStyle, height: 'auto', resize: 'vertical',
-        lineHeight: 1.5, ...style,
+        lineHeight: 1.5, ...(isMobile ? { fontSize: 16 } : {}), ...style,
       }}
       {...focusHandlers(onFocus, onBlur)}
       {...props}
@@ -227,11 +274,15 @@ export function Button({
   variant = 'primary', size = 'md', disabled, style,
   onMouseEnter, onMouseLeave, children, ...props
 }) {
+  const { isMobile } = useScreenSize();
+
+  // 'sm' stays visually compact on desktop (dense tables/cards) but is
+  // never allowed to shrink below a 44px tap target on a touch screen.
   const sizeStyle = size === 'sm'
-    ? { padding: '6px 14px', fontSize: 12, height: 32 }
+    ? (isMobile ? { padding: '9px 16px', fontSize: 13, height: 44 } : { padding: '6px 14px', fontSize: 12, height: 32 })
     : size === 'lg'
     ? { padding: '13px 26px', fontSize: 15, height: 48 }
-    : {};
+    : (isMobile ? { height: 44 } : {});
 
   return (
     <button
@@ -262,6 +313,32 @@ export function Button({
     </button>
   );
 }
+
+// ── MODAL ACTIONS ─────────────────────────────────────────────────────
+// Standard button row for the bottom of a Modal's content. Desktop:
+// right-aligned row, as before. Mobile: stacked full-width buttons that
+// stick to the bottom of the modal's scroll area so they're always
+// reachable without scrolling down to find them.
+export function ModalActions({ children }) {
+  const { isDesktop } = useScreenSize();
+  return (
+    <div style={isDesktop ? modalActionsStyles.row : modalActionsStyles.rowSticky}>
+      {children}
+    </div>
+  );
+}
+
+const modalActionsStyles = {
+  row: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
+  rowSticky: {
+    display: 'flex', flexDirection: 'column', gap: 10,
+    marginTop: 20, marginLeft: -20, marginRight: -20, marginBottom: -24,
+    padding: '14px 20px',
+    position: 'sticky', bottom: -24,
+    background: tokens.colors.card,
+    borderTop: `1px solid ${tokens.colors.border}`,
+  },
+};
 
 // ── STATUS BADGE ──────────────────────────────────────────────────────
 export function StatusBadge({ status, label }) {
@@ -382,9 +459,16 @@ export function EmptyState({ icon = '📭', title, subtitle, action }) {
 
 // ── TABS (pill or full-width variants) ───────────────────────────────
 export function Tabs({ items, active, onChange, variant = 'card' }) {
+  const { isMobile } = useScreenSize();
+
   if (variant === 'pill') {
     return (
-      <div style={{ display: 'flex', gap: 8, marginBottom: tokens.spacing.md, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex', gap: 8, marginBottom: tokens.spacing.md,
+        ...(isMobile
+          ? { flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }
+          : { flexWrap: 'wrap' }),
+      }}>
         {items.map(item => {
           const isActive = active === item.key;
           return (
@@ -392,13 +476,15 @@ export function Tabs({ items, active, onChange, variant = 'card' }) {
               key={item.key}
               onClick={() => onChange(item.key)}
               style={{
-                padding: '8px 18px', borderRadius: tokens.radius.full,
+                padding: isMobile ? '11px 18px' : '8px 18px', borderRadius: tokens.radius.full,
                 border: `1.5px solid ${isActive ? tokens.colors.primary : tokens.colors.border}`,
                 background: isActive ? tokens.colors.primary : tokens.colors.card,
                 color: isActive ? tokens.colors.textInverse : tokens.colors.textSecondary,
                 fontSize: 13, fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer', fontFamily: tokens.font.family,
                 transition: tokens.transition,
+                flexShrink: 0, whiteSpace: 'nowrap',
+                ...(isMobile ? { minHeight: 44 } : {}),
               }}
             >
               {item.label}
@@ -416,6 +502,9 @@ export function Tabs({ items, active, onChange, variant = 'card' }) {
         borderRadius: tokens.radius.md, padding: 4,
         marginBottom: tokens.spacing.md, boxShadow: tokens.shadows.sm,
         border: `1px solid ${tokens.colors.border}`,
+        ...(isMobile
+          ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch' }
+          : {}),
       }}>
         {items.map(item => {
           const isActive = active === item.key;
@@ -424,13 +513,16 @@ export function Tabs({ items, active, onChange, variant = 'card' }) {
               key={item.key}
               onClick={() => onChange(item.key)}
               style={{
-                flex: 1, padding: '11px 16px', borderRadius: tokens.radius.sm,
+                ...(isMobile ? { flex: '0 0 auto', minWidth: 128 } : { flex: 1 }),
+                padding: isMobile ? '12px 16px' : '11px 16px', borderRadius: tokens.radius.sm,
                 border: 'none', cursor: 'pointer',
                 background: isActive ? tokens.colors.primary : 'transparent',
                 color: isActive ? tokens.colors.textInverse : tokens.colors.textSecondary,
                 fontSize: 13, fontWeight: isActive ? 700 : 500,
                 fontFamily: tokens.font.family, transition: tokens.transition,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                whiteSpace: 'nowrap',
+                ...(isMobile ? { minHeight: 44 } : {}),
               }}
             >
               {item.icon && <span>{item.icon}</span>}

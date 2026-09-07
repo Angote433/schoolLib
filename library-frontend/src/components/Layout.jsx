@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { lossService } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import { Avatar } from './SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 // Navigation items — each one is a link in the sidebar
 // path = URL, label = display text, icon = emoji for now
@@ -27,6 +28,12 @@ const SECTION_LABELS = {
   Library: 'Library',
 };
 
+// TEACHER accounts only manage their own stream — Users, Classes &
+// Streams and Books (title/copy registration + printing) are librarian
+// management functions the backend already 403s them on, so they're
+// hidden from navigation too rather than showing dead links.
+const TEACHER_VISIBLE_PATHS = ['/dashboard', '/students', '/distributions', '/losses'];
+
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -35,8 +42,14 @@ export default function Layout({ children }) {
   // Used to highlight the active nav item
   const location = useLocation();
 
-  // Controls whether sidebar is collapsed or expanded
+  const { isMobile, isDesktop } = useScreenSize();
+  const isCompact = !isDesktop; // tablet or mobile — sidebar becomes a drawer
+
+  // Controls whether sidebar is collapsed or expanded (desktop only)
   const [collapsed, setCollapsed] = useState(false);
+
+  // Controls whether the drawer sidebar is open (tablet/mobile only)
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Pending loss count — shown as a small notification bell badge
   const [pendingLossCount, setPendingLossCount] = useState(0);
@@ -47,40 +60,88 @@ export default function Layout({ children }) {
       .catch(() => setPendingLossCount(0));
   }, [location.pathname]);
 
+  // Close the drawer whenever the route changes — covers nav taps,
+  // browser back/forward, and programmatic navigation alike.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const handleNavClick = (path) => {
+    navigate(path);
+    if (isCompact) setDrawerOpen(false);
+  };
+
+  const visibleNavItems = user?.role === 'TEACHER'
+    ? NAV_ITEMS.filter(item => TEACHER_VISIBLE_PATHS.includes(item.path))
+    : NAV_ITEMS;
+
+  const visibleSections = ['Overview', 'People', 'Library'].filter(
+    section => visibleNavItems.some(item => item.section === section)
+  );
+
   const currentItem = NAV_ITEMS.find(item => item.path === location.pathname);
-  const sidebarWidth = collapsed ? 68 : 236;
+
+  // Desktop: permanent sidebar, width driven by the collapse toggle.
+  // Compact (tablet/mobile): fixed-width drawer that slides in/out.
+  const sidebarWidth = isCompact ? 264 : (collapsed ? 68 : 236);
+  const showCollapsedVisuals = !isCompact && collapsed;
 
   return (
     <div style={styles.container}>
 
+      {/* ── DRAWER BACKDROP — tablet/mobile only ─────────── */}
+      {isCompact && drawerOpen && (
+        <div style={styles.backdrop} onClick={() => setDrawerOpen(false)} />
+      )}
+
       {/* ── SIDEBAR ────────────────────────────────────── */}
-      <aside style={{ ...styles.sidebar, width: sidebarWidth }}>
+      <aside
+        style={{
+          ...styles.sidebar,
+          width: sidebarWidth,
+          ...(isCompact
+            ? {
+                transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+                boxShadow: drawerOpen ? tokens.shadows.xl : 'none',
+              }
+            : {}),
+        }}
+      >
 
         {/* Logo area */}
         <div style={styles.logoArea}>
           <span style={styles.logoIcon}>📚</span>
-          {!collapsed && (
+          {!showCollapsedVisuals && (
             <div>
               <div style={styles.logoText}>School Library</div>
               <div style={styles.logoSub}>Management System</div>
             </div>
+          )}
+          {isCompact && (
+            <button
+              onClick={() => setDrawerOpen(false)}
+              style={styles.drawerCloseBtn}
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
           )}
         </div>
 
         {/* User info */}
         <div style={{
           ...styles.userArea,
-          justifyContent: collapsed ? 'center' : 'flex-start',
+          justifyContent: showCollapsedVisuals ? 'center' : 'flex-start',
         }}>
           <div style={styles.userAvatar}>
             {user?.fullName?.charAt(0).toUpperCase() || 'U'}
           </div>
-          {!collapsed && (
+          {!showCollapsedVisuals && (
             <div style={{ overflow: 'hidden' }}>
               <div style={styles.userName}>{user?.fullName}</div>
               <span style={styles.userRoleBadge}>{user?.role}</span>
@@ -90,23 +151,23 @@ export default function Layout({ children }) {
 
         {/* Navigation links, grouped by section */}
         <nav style={styles.nav}>
-          {['Overview', 'People', 'Library'].map(section => (
+          {visibleSections.map(section => (
             <div key={section}>
-              {!collapsed && (
+              {!showCollapsedVisuals && (
                 <div style={styles.navSectionLabel}>
                   {SECTION_LABELS[section]}
                 </div>
               )}
-              {NAV_ITEMS.filter(item => item.section === section).map(item => {
+              {visibleNavItems.filter(item => item.section === section).map(item => {
                 const isActive = location.pathname === item.path;
                 return (
                   <button
                     key={item.path}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => handleNavClick(item.path)}
                     style={{
                       ...styles.navItem,
                       ...(isActive ? styles.navItemActive : {}),
-                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      justifyContent: showCollapsedVisuals ? 'center' : 'flex-start',
                     }}
                     onMouseEnter={e => {
                       if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
@@ -114,11 +175,11 @@ export default function Layout({ children }) {
                     onMouseLeave={e => {
                       if (!isActive) e.currentTarget.style.background = 'transparent';
                     }}
-                    title={collapsed ? item.label : ''}
+                    title={showCollapsedVisuals ? item.label : ''}
                   >
                     <span style={styles.navIcon}>{item.icon}</span>
-                    {!collapsed && <span style={styles.navLabel}>{item.label}</span>}
-                    {isActive && !collapsed && <span style={styles.navActiveDot} />}
+                    {!showCollapsedVisuals && <span style={styles.navLabel}>{item.label}</span>}
+                    {isActive && !showCollapsedVisuals && <span style={styles.navActiveDot} />}
                   </button>
                 );
               })}
@@ -126,17 +187,19 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        {/* Collapse toggle button */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          style={styles.collapseBtn}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <span style={{ display: 'inline-block', transition: 'transform 0.25s ease', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
-            ←
-          </span>
-          {!collapsed && <span>Collapse</span>}
-        </button>
+        {/* Collapse toggle button — desktop only, drawer has its own close button */}
+        {!isCompact && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            style={styles.collapseBtn}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <span style={{ display: 'inline-block', transition: 'transform 0.25s ease', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
+              ←
+            </span>
+            {!collapsed && <span>Collapse</span>}
+          </button>
+        )}
 
         {/* Logout — separated from nav with a top border, red tint */}
         <div style={styles.logoutWrapper}>
@@ -144,36 +207,48 @@ export default function Layout({ children }) {
             onClick={handleLogout}
             style={{
               ...styles.logoutBtn,
-              justifyContent: collapsed ? 'center' : 'flex-start',
+              justifyContent: showCollapsedVisuals ? 'center' : 'flex-start',
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.22)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
-            title={collapsed ? 'Logout' : ''}
+            title={showCollapsedVisuals ? 'Logout' : ''}
           >
             <span>🚪</span>
-            {!collapsed && <span>Logout</span>}
+            {!showCollapsedVisuals && <span>Logout</span>}
           </button>
         </div>
 
       </aside>
 
       {/* ── MAIN CONTENT ─────────────────────────────────── */}
-      <div style={{ ...styles.mainWrapper, marginLeft: sidebarWidth }}>
+      <div style={{ ...styles.mainWrapper, marginLeft: isCompact ? 0 : sidebarWidth }}>
 
         {/* Top bar */}
         <header style={styles.topBar}>
-          <div style={styles.breadcrumb}>
-            {currentItem && (
-              <>
-                <span style={styles.breadcrumbSection}>
-                  {SECTION_LABELS[currentItem.section]}
-                </span>
-                <span style={styles.breadcrumbSep}>/</span>
-              </>
+          <div style={styles.topBarLeft}>
+            {isCompact && (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                style={styles.hamburgerBtn}
+                aria-label="Open menu"
+              >
+                ☰
+              </button>
             )}
-            <span style={styles.breadcrumbPage}>
-              {currentItem?.label || 'School Library'}
-            </span>
+
+            <div style={styles.breadcrumb}>
+              {!isMobile && currentItem && (
+                <>
+                  <span style={styles.breadcrumbSection}>
+                    {SECTION_LABELS[currentItem.section]}
+                  </span>
+                  <span style={styles.breadcrumbSep}>/</span>
+                </>
+              )}
+              <span style={styles.breadcrumbPage}>
+                {currentItem?.label || 'School Library'}
+              </span>
+            </div>
           </div>
 
           <div style={styles.topBarRight}>
@@ -193,18 +268,22 @@ export default function Layout({ children }) {
               )}
             </button>
 
-            <div style={styles.topBarUserBlock}>
+            {isMobile ? (
               <Avatar name={user?.fullName} size={32} background={tokens.colors.primary} />
-              <div style={styles.topBarUserText}>
-                <span style={styles.topBarUser}>{user?.fullName}</span>
-                <span style={styles.topBarUserRole}>{user?.role}</span>
+            ) : (
+              <div style={styles.topBarUserBlock}>
+                <Avatar name={user?.fullName} size={32} background={tokens.colors.primary} />
+                <div style={styles.topBarUserText}>
+                  <span style={styles.topBarUser}>{user?.fullName}</span>
+                  <span style={styles.topBarUserRole}>{user?.role}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </header>
 
         {/* Page content — changes with navigation */}
-        <main style={styles.content}>
+        <main style={{ ...styles.content, padding: isMobile ? 16 : isCompact ? 22 : 28 }}>
           {children}
         </main>
 
@@ -222,6 +301,14 @@ const styles = {
     background: tokens.colors.surface,
   },
 
+  // Drawer backdrop — tablet/mobile only
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(15,23,42,0.5)',
+    zIndex: 150,
+  },
+
   // Sidebar
   sidebar: {
     background: `linear-gradient(180deg, ${tokens.colors.primary} 0%, ${tokens.colors.primaryDark} 100%)`,
@@ -231,9 +318,9 @@ const styles = {
     height: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width 0.25s ease',
+    transition: 'width 0.25s ease, transform 0.25s ease',
     overflow: 'hidden',
-    zIndex: 100,
+    zIndex: 200,
   },
 
   logoArea: {
@@ -243,6 +330,7 @@ const styles = {
     padding: '22px 18px',
     borderBottom: '1px solid rgba(255,255,255,0.1)',
     flexShrink: 0,
+    position: 'relative',
   },
   logoIcon: { fontSize: 40, flexShrink: 0, lineHeight: 1 },
   logoText: {
@@ -256,6 +344,21 @@ const styles = {
     fontSize: 11,
     whiteSpace: 'nowrap',
     marginTop: 1,
+  },
+  drawerCloseBtn: {
+    position: 'absolute',
+    top: '50%',
+    right: 14,
+    transform: 'translateY(-50%)',
+    width: 40, height: 40,
+    borderRadius: '50%',
+    background: 'rgba(255,255,255,0.1)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 15,
+    cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
 
   userArea: {
@@ -391,10 +494,11 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     minHeight: '100vh',
+    minWidth: 0,
   },
   topBar: {
     background: tokens.colors.card,
-    padding: '0 28px',
+    padding: '0 16px',
     height: 60,
     display: 'flex',
     alignItems: 'center',
@@ -404,12 +508,32 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
+    gap: 12,
+  },
+  topBarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+  hamburgerBtn: {
+    width: 44, height: 44,
+    borderRadius: 8,
+    border: 'none',
+    background: 'transparent',
+    fontSize: 20,
+    cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: tokens.colors.textPrimary,
+    flexShrink: 0,
   },
   breadcrumb: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     fontSize: 14,
+    minWidth: 0,
+    overflow: 'hidden',
   },
   breadcrumbSection: {
     color: tokens.colors.textMuted,
@@ -421,11 +545,15 @@ const styles = {
   breadcrumbPage: {
     fontWeight: 700,
     color: tokens.colors.textPrimary,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   topBarRight: {
     display: 'flex',
     alignItems: 'center',
     gap: 16,
+    flexShrink: 0,
   },
   bellBtn: {
     position: 'relative',
@@ -476,5 +604,6 @@ const styles = {
   content: {
     padding: 28,
     flex: 1,
+    minWidth: 0,
   },
 };

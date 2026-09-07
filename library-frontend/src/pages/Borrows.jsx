@@ -9,6 +9,7 @@ import { tokens } from '../styles/tokens';
 import {
   Button, Input, Banner, StatusBadge, Tabs, Card, Avatar,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 const MODES = {
   ISSUE:    'issue',
@@ -19,6 +20,7 @@ const MODES = {
 
 export default function Borrows() {
   const { user } = useAuth();
+  const { isMobile } = useScreenSize();
   const [mode, setMode] = useState(MODES.ISSUE);
 
   // Scan state
@@ -289,6 +291,36 @@ export default function Borrows() {
             <div style={styles.loadingText}>Loading…</div>
           ) : activeBorrows.length === 0 ? (
             <div style={styles.emptyList}>No books currently borrowed</div>
+          ) : isMobile ? (
+            <div style={styles.cardList}>
+              {activeBorrows.map((record, i) => {
+                const overdue = new Date(record.dateDue) < new Date();
+                return (
+                  <div key={i} style={{ ...styles.borrowCard, ...(overdue ? styles.borrowCardOverdue : {}) }}>
+                    <div style={styles.bookTitleCell}>{record.bookCopy?.bookDetails?.titleName}</div>
+                    <div style={styles.bookSubject}>{record.bookCopy?.qrCode}</div>
+                    <div style={styles.borrowCardRow}>
+                      <span style={styles.borrowCardLabel}>Student</span>
+                      <span>{record.student?.fullName} ({record.student?.admissionNumber})</span>
+                    </div>
+                    <div style={styles.borrowCardRow}>
+                      <span style={styles.borrowCardLabel}>Borrowed</span>
+                      <span>{record.dateBorrowed}</span>
+                    </div>
+                    <div style={styles.borrowCardRow}>
+                      <span style={styles.borrowCardLabel}>Due</span>
+                      <span style={{ color: overdue ? tokens.colors.danger : tokens.colors.textPrimary, fontWeight: overdue ? 700 : 400 }}>
+                        {record.dateDue}
+                        {overdue && ` (${daysOverdue(record.dateDue)}d overdue)`}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <StatusBadge status={overdue ? 'OVERDUE' : 'ACTIVE'} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={styles.table}>
@@ -359,6 +391,29 @@ export default function Borrows() {
             <div style={styles.loadingText}>Loading…</div>
           ) : overdueBorrows.length === 0 ? (
             <div style={styles.emptyList}>🎉 No overdue borrows — all books returned on time</div>
+          ) : isMobile ? (
+            <div style={styles.cardList}>
+              {overdueBorrows.map((record, i) => (
+                <div key={i} style={{ ...styles.borrowCard, ...styles.borrowCardOverdue }}>
+                  <div style={styles.bookTitleCell}>{record.bookCopy?.bookDetails?.titleName}</div>
+                  <div style={styles.bookSubject}>{record.bookCopy?.qrCode}</div>
+                  <div style={styles.borrowCardRow}>
+                    <span style={styles.borrowCardLabel}>Student</span>
+                    <span>{record.student?.fullName} ({record.student?.admissionNumber})</span>
+                  </div>
+                  <div style={styles.borrowCardRow}>
+                    <span style={styles.borrowCardLabel}>Due</span>
+                    <span style={{ color: tokens.colors.danger, fontWeight: 700 }}>{record.dateDue}</span>
+                  </div>
+                  <div style={{ marginTop: 8, marginBottom: 12 }}>
+                    <StatusBadge status="OVERDUE" label={`${daysOverdue(record.dateDue)} days`} />
+                  </div>
+                  <Button variant="danger" style={{ width: '100%' }} onClick={() => handleFlagLost(record)}>
+                    ⚠️ Flag as Lost
+                  </Button>
+                </div>
+              ))}
+            </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={styles.table}>
@@ -405,10 +460,10 @@ export default function Borrows() {
 
       {/* ── ISSUE / RETURN SCAN AREA ──────────────────── */}
       {(mode === MODES.ISSUE || mode === MODES.RETURN) && (
-        <div style={styles.workArea}>
+        <div style={{ ...styles.workArea, ...(isMobile ? { flexDirection: 'column' } : {}) }}>
 
           {/* Left — scan panel */}
-          <div style={styles.leftPanel}>
+          <div style={{ ...styles.leftPanel, ...(isMobile ? { flex: '1 1 auto', width: '100%' } : {}) }}>
             <Card>
               <div style={styles.scanLabel}>
                 {mode === MODES.ISSUE ? '📖 Scan book to issue' : '↩️ Scan book to return'}
@@ -419,14 +474,18 @@ export default function Borrows() {
               <div style={styles.scanInputWrap}>
                 <Input
                   ref={scanInputRef}
-                  style={styles.scanInput}
+                  style={{ ...styles.scanInput, ...(isMobile ? { fontSize: 16, height: 52 } : {}) }}
                   placeholder="Click here, then scan barcode..."
                   value={barcodeInput}
                   onChange={e => setBarcodeInput(e.target.value)}
                   onKeyDown={handleScan}
                   autoComplete="off"
                 />
-                <Button variant="primary" style={{ height: 48 }} onClick={() => handleScan({ key: 'Enter' })}>
+                <Button
+                  variant="primary"
+                  style={{ height: isMobile ? 52 : 48 }}
+                  onClick={() => handleScan({ key: 'Enter' })}
+                >
                   Look Up
                 </Button>
               </div>
@@ -628,6 +687,16 @@ const styles = {
   td: { padding: '11px 16px', color: tokens.colors.textPrimary },
   bookTitleCell: { fontWeight: 600, color: tokens.colors.textPrimary, fontSize: 13 },
   bookSubject: { fontSize: 11, color: tokens.colors.textMuted, marginTop: 2 },
+
+  // ── Mobile card list (replaces Active/Overdue tables) ────────────
+  cardList: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14 },
+  borrowCard: {
+    background: tokens.colors.card, border: `1px solid ${tokens.colors.border}`,
+    borderRadius: tokens.radius.md, padding: 14,
+  },
+  borrowCardOverdue: { background: tokens.colors.dangerLight, border: `1px solid ${tokens.colors.dangerBorder}` },
+  borrowCardRow: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: tokens.colors.textSecondary, marginTop: 6, gap: 10 },
+  borrowCardLabel: { color: tokens.colors.textMuted, fontWeight: 600, flexShrink: 0 },
 
   scanLabel: { fontSize: 15, fontWeight: 700, color: tokens.colors.textPrimary, marginBottom: 6 },
   scanHint: { fontSize: 12, color: tokens.colors.textMuted, marginBottom: 14, lineHeight: 1.5 },

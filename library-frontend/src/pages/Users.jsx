@@ -3,10 +3,12 @@ import { userService, streamService } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import {
   Modal, FormField, Input, Button, Banner, EmptyState,
-  Tabs, Card, Avatar,
+  Tabs, Card, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 export default function Users() {
+  const { isMobile } = useScreenSize();
 
   const [users, setUsers] = useState([]);
   const [streams, setStreams] = useState([]);
@@ -177,7 +179,7 @@ export default function Users() {
           onChange={setRoleFilter}
         />
         <Input
-          style={styles.searchInput}
+          style={{ ...styles.searchInput, ...(isMobile ? { width: '100%' } : {}) }}
           placeholder="🔍  Search by name or username..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
@@ -281,14 +283,14 @@ export default function Users() {
               </div>
             </FormField>
 
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting ? 'Creating…' : 'Create User'}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -308,12 +310,12 @@ export default function Users() {
               You can reactivate their account at any time.
             </p>
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="danger" onClick={handleDeactivate} disabled={submitting}>
               {submitting ? 'Deactivating…' : 'Yes, Deactivate'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -330,12 +332,12 @@ export default function Users() {
               They will be able to log in again immediately.
             </p>
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="primary" onClick={handleActivate} disabled={submitting}>
               {submitting ? 'Activating…' : 'Yes, Activate'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -440,7 +442,6 @@ const styles = {
   confirmIcon: { fontSize: 40, marginBottom: 12 },
   confirmText: { fontSize: 15, color: tokens.colors.textPrimary, margin: '0 0 8px', lineHeight: 1.5 },
   confirmSub: { fontSize: 13, color: tokens.colors.textMuted, margin: 0, lineHeight: 1.5 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 };
 
 const cardStyles = {

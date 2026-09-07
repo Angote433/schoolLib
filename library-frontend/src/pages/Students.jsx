@@ -7,10 +7,12 @@ import {
 import { tokens } from '../styles/tokens';
 import {
   Modal, FormField, Input, Select, Button, Banner, EmptyState,
-  Card, StatusBadge, Avatar,
+  Card, StatusBadge, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 export default function Students() {
+  const { isMobile } = useScreenSize();
 
   // Data
   const [classes, setClasses] = useState([]);
@@ -217,7 +219,7 @@ export default function Students() {
           <p style={styles.pageSub}>View and manage students by class and stream</p>
         </div>
 
-        {selectedStreamId && (
+        {selectedStreamId && !isMobile && (
           <Button variant="primary" onClick={() => setModal('addStudent')}>
             + Add Student
           </Button>
@@ -228,7 +230,7 @@ export default function Students() {
       {success && <Banner type="success">{success}</Banner>}
       {error && !modal && <Banner type="error">{error}</Banner>}
 
-      {/* ── FILTER BAR ───────────────────────────────── */}
+      {/* ── FILTER BAR — class / stream pickers ──────── */}
       <Card style={styles.filterBar}>
 
         <div style={styles.filterGroup}>
@@ -237,7 +239,7 @@ export default function Students() {
             <div style={styles.selectPlaceholder}>Loading classes…</div>
           ) : (
             <Select
-              style={{ minWidth: 200 }}
+              style={{ minWidth: isMobile ? '100%' : 200 }}
               value={selectedClassId}
               onChange={e => setSelectedClassId(e.target.value)}
             >
@@ -260,7 +262,7 @@ export default function Students() {
               <div style={styles.selectPlaceholder}>No streams in this class yet</div>
             ) : (
               <Select
-                style={{ minWidth: 200 }}
+                style={{ minWidth: isMobile ? '100%' : 200 }}
                 value={selectedStreamId}
                 onChange={e => setSelectedStreamId(e.target.value)}
               >
@@ -276,7 +278,7 @@ export default function Students() {
           </div>
         )}
 
-        {selectedStreamId && (
+        {selectedStreamId && !isMobile && (
           <>
             <div style={styles.filterGroup}>
               <label style={styles.filterLabel}>Search</label>
@@ -309,6 +311,31 @@ export default function Students() {
         )}
 
       </Card>
+
+      {/* ── STICKY SEARCH BAR — mobile only ──────────── */}
+      {selectedStreamId && isMobile && (
+        <div style={styles.stickySearchBar}>
+          <Input
+            placeholder="Search name or admission number..."
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+          />
+          <div style={styles.toggleRow}>
+            <button
+              style={{ ...styles.toggleBtn, flex: 1, ...(showInactive ? {} : styles.toggleBtnActive) }}
+              onClick={() => setShowInactive(false)}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              style={{ ...styles.toggleBtn, flex: 1, ...(showInactive ? styles.toggleBtnActive : {}) }}
+              onClick={() => setShowInactive(true)}
+            >
+              All ({students.length})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── STREAM SUMMARY BAR ───────────────────────── */}
       {selectedStreamId && selectedStream && (
@@ -353,6 +380,47 @@ export default function Students() {
           title={searchText ? 'No students match your search' : 'No students in this stream'}
           subtitle={!searchText && 'Click "+ Add Student" to add the first student'}
         />
+      ) : isMobile ? (
+        <div style={styles.studentCardList}>
+          {filteredStudents.map(student => (
+            <Card key={student.studentId} style={styles.studentCard}>
+              <div style={styles.studentCardTop}>
+                <Avatar name={student.fullName} size={40} background={tokens.colors.primary} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={styles.studentName}>{student.fullName}</div>
+                  <span style={styles.admissionNo}>{student.admissionNumber}</span>
+                </div>
+                <StatusBadge status={student.isActive ? 'ACTIVE' : 'INACTIVE'} label={student.isActive ? 'Active' : 'Inactive'} />
+              </div>
+              <div style={styles.studentCardMeta}>
+                Year enrolled {student.yearEnrolled}
+              </div>
+              <div style={styles.studentCardActions}>
+                <Button
+                  variant="secondary" size="sm" style={{ flex: 1 }}
+                  onClick={() => { setSelectedStudent(student); setModal('viewStudent'); }}
+                >
+                  View
+                </Button>
+                {student.isActive ? (
+                  <Button
+                    variant="danger" size="sm" style={{ flex: 1 }}
+                    onClick={() => { setSelectedStudent(student); setModal('confirmDeactivate'); }}
+                  >
+                    Deactivate
+                  </Button>
+                ) : (
+                  <Button
+                    variant="success" size="sm" style={{ flex: 1 }}
+                    onClick={() => { setSelectedStudent(student); setModal('confirmActivate'); }}
+                  >
+                    Activate
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <table style={styles.table}>
@@ -420,6 +488,17 @@ export default function Students() {
         </Card>
       )}
 
+      {/* ── FLOATING ADD STUDENT BUTTON — mobile only ── */}
+      {selectedStreamId && isMobile && (
+        <button
+          style={styles.fab}
+          onClick={() => setModal('addStudent')}
+          aria-label="Add student"
+        >
+          + Add Student
+        </button>
+      )}
+
       {/* ── ADD STUDENT MODAL ────────────────────────── */}
       {modal === 'addStudent' && (
         <Modal title={`Add Student to Stream ${selectedStream?.streamName}`} onClose={closeModal}>
@@ -453,12 +532,12 @@ export default function Students() {
               />
             </FormField>
 
-            <div style={styles.modalActions}>
+            <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={submitting}>
                 {submitting ? 'Adding…' : 'Add Student'}
               </Button>
-            </div>
+            </ModalActions>
           </form>
         </Modal>
       )}
@@ -494,9 +573,9 @@ export default function Students() {
             </div>
           </div>
 
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Close</Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -515,12 +594,12 @@ export default function Students() {
               You can reactivate them later if needed.
             </p>
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="danger" onClick={handleDeactivate} disabled={submitting}>
               {submitting ? 'Deactivating…' : 'Yes, Deactivate'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -538,12 +617,12 @@ export default function Students() {
               They will be able to borrow books again.
             </p>
           </div>
-          <div style={styles.modalActions}>
+          <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="primary" onClick={handleActivate} disabled={submitting}>
               {submitting ? 'Activating…' : 'Yes, Activate'}
             </Button>
-          </div>
+          </ModalActions>
         </Modal>
       )}
 
@@ -611,7 +690,27 @@ const styles = {
   studentRow: { display: 'flex', alignItems: 'center', gap: 10 },
   studentName: { fontWeight: 600, color: tokens.colors.textPrimary },
   actionRow: { display: 'flex', gap: 8 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
+
+  // ── Mobile card list (replaces the table) ────────────────────────
+  stickySearchBar: {
+    position: 'sticky', top: 60, zIndex: 40,
+    background: tokens.colors.surface,
+    padding: '10px 0', marginBottom: tokens.spacing.sm,
+    display: 'flex', flexDirection: 'column', gap: 8,
+  },
+  studentCardList: { display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 76 },
+  studentCard: { padding: 14 },
+  studentCardTop: { display: 'flex', alignItems: 'center', gap: 10 },
+  studentCardMeta: { fontSize: 12, color: tokens.colors.textMuted, marginTop: 10 },
+  studentCardActions: { display: 'flex', gap: 8, marginTop: 12 },
+  fab: {
+    position: 'fixed', left: 16, right: 16, bottom: 16,
+    height: 50, borderRadius: tokens.radius.md,
+    background: tokens.colors.primary, color: '#fff',
+    border: 'none', fontSize: 15, fontWeight: 700,
+    boxShadow: tokens.shadows.lg, cursor: 'pointer', zIndex: 90,
+  },
+
   confirmContent: { textAlign: 'center', padding: '8px 0 16px' },
   confirmText: { fontSize: 15, color: tokens.colors.textPrimary, margin: '0 0 8px', lineHeight: 1.5 },
   confirmSub: { fontSize: 13, color: tokens.colors.textMuted, margin: 0, lineHeight: 1.5 },

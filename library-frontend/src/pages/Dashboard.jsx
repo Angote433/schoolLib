@@ -9,6 +9,7 @@ import {
 } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import { Card, Avatar, StatusBadge, Button } from '../components/SharedComponents';
+import useScreenSize from '../hooks/useScreenSize';
 
 function timeOfDayGreeting() {
   const hour = new Date().getHours();
@@ -20,6 +21,7 @@ function timeOfDayGreeting() {
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isMobile } = useScreenSize();
 
   // Each piece of data has its own state
   const [stats, setStats] = useState({
@@ -141,7 +143,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── STAT CARDS ───────────────────────────────────── */}
-      <div style={styles.statsGrid}>
+      <div style={{ ...styles.statsGrid, ...(isMobile ? { gridTemplateColumns: 'repeat(2, 1fr)' } : {}) }}>
 
         <StatCard
           icon="📚"
@@ -186,7 +188,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── BOTTOM LISTS ─────────────────────────────────── */}
-      <div style={styles.listsGrid}>
+      <div style={{ ...styles.listsGrid, ...(isMobile ? { gridTemplateColumns: '1fr' } : {}) }}>
 
         {/* Pending Loss Reports */}
         <Card style={styles.listCard}>
