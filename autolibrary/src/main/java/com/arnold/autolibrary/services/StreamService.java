@@ -1,5 +1,7 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.BusinessRuleException;
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.SchoolClass;
 import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.model.UserDetails;
@@ -7,6 +9,8 @@ import com.arnold.autolibrary.repo.SchoolClassRepository;
 import com.arnold.autolibrary.repo.StreamRepo;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
 import com.arnold.autolibrary.security.AuthUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -15,6 +19,9 @@ import java.util.List;
 
 @Service
 public class StreamService {
+
+    private static final Logger log = LoggerFactory.getLogger(StreamService.class);
+
     @Autowired
     private StreamRepo streamRepo;
     @Autowired
@@ -28,7 +35,7 @@ public class StreamService {
     @org.springframework.transaction.annotation.Transactional
     public Stream createStream(Stream stream,int classId){
         SchoolClass schoolClass = schoolClassRepository.findById(classId).orElseThrow(
-                ()-> new RuntimeException("Class not found with id "+ classId)
+                ()-> new ResourceNotFoundException("Class not found with id "+ classId)
         );
 
         stream.setSchoolClass(schoolClass);
@@ -38,7 +45,7 @@ public class StreamService {
         //check if assigned another stream
         if(stream.getTeacher() != null){
             streamRepo.findByTeacher(stream.getTeacher()).ifPresent(existingStream
-            ->{throw new RuntimeException("This teacher is already assigned to another stream");});
+            ->{throw new BusinessRuleException("This teacher is already assigned to another stream");});
 
         }
 
@@ -52,6 +59,9 @@ public class StreamService {
             userDetailsRepo.save(teacher);
         }
 
+        log.info("Stream created: id={} name='{}' class={}",
+                saved.getStreamId(), saved.getStreamName(), schoolClass.getClassName());
+
         return saved;
 
     }
@@ -60,19 +70,19 @@ public class StreamService {
     @org.springframework.transaction.annotation.Transactional
     public Stream assignTeacher(int streamId,int userId){
         Stream stream = streamRepo.findById(streamId).orElseThrow(
-                ()->new RuntimeException("Stream not found with id "+ streamId)
+                ()->new ResourceNotFoundException("Stream not found with id "+ streamId)
         );
         UserDetails teacher = userDetailsRepo.findById(userId).orElseThrow(()->
-                new RuntimeException("Teacher not found with id "+ userId));
+                new ResourceNotFoundException("Teacher not found with id "+ userId));
 
         if(teacher.getRole() != com.arnold.autolibrary.model.Role.TEACHER){
-            throw new RuntimeException("Only teachers can be assigned to a stream");
+            throw new BusinessRuleException("Only teachers can be assigned to a stream");
         }
 
         //teacher running another stream?
         streamRepo.findByTeacher(teacher).ifPresent(existingStream ->
         {if(existingStream.getStreamId() != streamId){
-        throw new RuntimeException("Teacher manages another stream "+ existingStream.getStreamName());}
+        throw new BusinessRuleException("Teacher manages another stream "+ existingStream.getStreamName());}
         });
 
         //clear the previous teacher of this stream (if being reassigned)
@@ -90,7 +100,9 @@ public class StreamService {
         teacher.setStream(stream);
         userDetailsRepo.save(teacher);
 
-        return streamRepo.save(stream);
+        Stream saved = streamRepo.save(stream);
+        log.info("Teacher assigned to stream: user={} stream={}", teacher.getUserName(), saved.getStreamName());
+        return saved;
 
     }
 
@@ -107,12 +119,12 @@ public class StreamService {
         UserDetails caller = authUtil.getCurrentUser();
         authUtil.assertCanAccessStream(caller, streamId);
         return streamRepo.findById(streamId).orElseThrow(
-                ()->new RuntimeException("Stream not found with id "+ streamId));
+                ()->new ResourceNotFoundException("Stream not found with id "+ streamId));
     }
 
     public Stream deactivateStream(int streamId){
         Stream stream = streamRepo.findById(streamId).orElseThrow(
-                ()->new RuntimeException("Stream not found with id "+ streamId)
+                ()->new ResourceNotFoundException("Stream not found with id "+ streamId)
         );
         stream.setActive(false);
 

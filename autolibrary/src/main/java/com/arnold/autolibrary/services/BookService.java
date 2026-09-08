@@ -1,11 +1,14 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.BookCopy;
 import com.arnold.autolibrary.model.BookDetails;
 import com.arnold.autolibrary.model.BookStatus;
 import com.arnold.autolibrary.repo.BookCopyRepo;
 import com.arnold.autolibrary.repo.BookDetailsRepo;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +18,9 @@ import java.util.List;
 
 @Service
 public class BookService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookService.class);
+
     @Autowired
     private BookDetailsRepo bookDetailsRepo;
     @Autowired
@@ -22,7 +28,10 @@ public class BookService {
 
     public BookDetails registerTitle(BookDetails bookDetails){
         bookDetails.setCopies(0);
-        return bookDetailsRepo.save(bookDetails);
+        BookDetails saved = bookDetailsRepo.save(bookDetails);
+        log.info("Book title registered: id={} title='{}' isbn={}",
+                saved.getDetailsId(), saved.getTitleName(), saved.getIsbn());
+        return saved;
     }
     public List<BookDetails>getAllBooks(){
         return bookDetailsRepo.findAll();
@@ -31,7 +40,7 @@ public class BookService {
         return bookDetailsRepo.findByGradeLevel(gradeLevel);
     }
     public BookDetails getBookByID(int detailsId){return bookDetailsRepo.findById(detailsId)
-            .orElseThrow(()->new RuntimeException("Book with id: "+ detailsId + " not found"));}
+            .orElseThrow(()->new ResourceNotFoundException("Book with id: "+ detailsId + " not found"));}
 
     //book copies
     //Accession number format: ACC-{detailsId}-{sequentialNumber padded to 4 digits}
@@ -62,28 +71,39 @@ public class BookService {
         details.setCopies(existingCount + quantity);
         bookDetailsRepo.save(details);
 
+        log.info("Copies registered: titleId={} quantity={} range={}..{}",
+                detailsId, quantity,
+                generateAccessionNumber(detailsId, existingCount + 1),
+                generateAccessionNumber(detailsId, existingCount + quantity));
+
         return copies;
     }
 
 
     public BookCopy findByQR(String qrCode){
-        return bookCopyRepo.findByQrCode(qrCode).orElseThrow(()
-        -> new RuntimeException("No book found with qr code "+ qrCode
-        +" .Book may not be registered in the system"));
+        return bookCopyRepo.findByQrCode(qrCode).orElseThrow(() -> {
+            log.warn("Copy lookup failed: qrCode={} (not found)", qrCode);
+            return new ResourceNotFoundException("No book found with qr code "+ qrCode
+                    +" .Book may not be registered in the system");
+        });
     }
 
     //Teacher types the accession number written inside the book
     public BookCopy findByAccessionNumber(String accessionNumber){
-        return bookCopyRepo.findByAccessionNumber(accessionNumber).orElseThrow(()
-        -> new RuntimeException("No book found with accession number: " + accessionNumber
-        + ". Check the number written inside the book."));
+        return bookCopyRepo.findByAccessionNumber(accessionNumber).orElseThrow(() -> {
+            log.warn("Copy lookup failed: accession={} (not found)", accessionNumber);
+            return new ResourceNotFoundException("No book found with accession number: " + accessionNumber
+                    + ". Check the number written inside the book.");
+        });
     }
 
     //Teacher scans the ISBN barcode on the book's back cover
     public BookDetails getByIsbn(String isbn){
-        return bookDetailsRepo.findByIsbn(isbn).orElseThrow(()
-        -> new RuntimeException("No book registered with ISBN: " + isbn
-        + ". Ask the librarian to register this book title first."));
+        return bookDetailsRepo.findByIsbn(isbn).orElseThrow(() -> {
+            log.warn("Title lookup failed: isbn={} (not found)", isbn);
+            return new ResourceNotFoundException("No book registered with ISBN: " + isbn
+                    + ". Ask the librarian to register this book title first.");
+        });
     }
 
     public List<BookCopy>getCopiesByByBook(int detailsId){
@@ -95,7 +115,7 @@ public class BookService {
 
     public BookCopy getCopyById(int copyId) {
         return bookCopyRepo.findById(copyId).orElseThrow(
-                ()->new RuntimeException("Book copy not found")
+                ()->new ResourceNotFoundException("Book copy not found")
         );
     }
 }

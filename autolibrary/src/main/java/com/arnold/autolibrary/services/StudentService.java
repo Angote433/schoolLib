@@ -1,5 +1,7 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.BusinessRuleException;
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.model.Student;
 import com.arnold.autolibrary.model.UserDetails;
@@ -7,6 +9,8 @@ import com.arnold.autolibrary.repo.StreamRepo;
 import com.arnold.autolibrary.repo.StudentRepo;
 import com.arnold.autolibrary.security.AuthUtil;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +18,9 @@ import java.util.List;
 
 @Service
 public class StudentService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentService.class);
+
     @Autowired
     private StudentRepo studentRepo;
     @Autowired
@@ -32,21 +39,26 @@ public class StudentService {
 
         //id to be unique amongst students
         if(studentRepo.existsByAdmissionNumber(student.getAdmissionNumber())){
-            throw new RuntimeException("Student with adm"+ student.getAdmissionNumber()+
+            throw new BusinessRuleException("Student with adm"+ student.getAdmissionNumber()+
                     "ecists");
         }
 
         //stream to nbe active /exist
         Stream stream = streamRepo.findById(effectiveStreamId).
-        orElseThrow(()->new RuntimeException("Stream not found"));
+        orElseThrow(()->new ResourceNotFoundException("Stream not found"));
 
         if(!stream.isActive()){
-            throw new RuntimeException("Stream not active ");
+            throw new BusinessRuleException("Stream not active ");
         }
 
         student.setStream(stream);
         student.setActive(true);
-        return studentRepo.save(student);
+        Student saved = studentRepo.save(student);
+
+        log.info("Student added: admission={} name='{}' stream={} by={}",
+                saved.getAdmissionNumber(), saved.getFullName(), stream.getStreamName(), caller.getUserName());
+
+        return saved;
     }
 
     public List<Student> getByStream(int streamId){
@@ -57,7 +69,7 @@ public class StudentService {
     public Student getStudentByAdmission(String admission){
         UserDetails caller = authUtil.getCurrentUser();
         Student student = studentRepo.findStudentByAdmissionNumber(admission).orElseThrow(
-                ()->new RuntimeException("Student not found" + admission)
+                ()->new ResourceNotFoundException("Student not found" + admission)
         );
         authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
         return student;
@@ -68,7 +80,9 @@ public class StudentService {
         Student student = getStudentById(studentId);
         authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
         student.setActive(false);
-        return studentRepo.save(student);
+        Student saved = studentRepo.save(student);
+        log.info("Student deactivated: admission={} by={}", saved.getAdmissionNumber(), caller.getUserName());
+        return saved;
     }
     @Transactional
     public Student activateStudent(int studentId){
@@ -76,7 +90,9 @@ public class StudentService {
         Student student = getStudentById(studentId);
         authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
         student.setActive(true);
-        return studentRepo.save(student);
+        Student saved = studentRepo.save(student);
+        log.info("Student activated: admission={} by={}", saved.getAdmissionNumber(), caller.getUserName());
+        return saved;
     }
 
     public Student updateStudent(int studentId,Student updatedData){
@@ -100,15 +116,21 @@ public class StudentService {
         authUtil.assertLibrarian(caller);
 
         Student student = getStudentById(studentId);
+        String fromStream = student.getStream().getStreamName();
         Stream newStream = streamRepo.findById(newStreamId).orElseThrow(
-                ()->new RuntimeException("Stream not found"));
+                ()->new ResourceNotFoundException("Stream not found"));
 
         if(!newStream.isActive()){
-            throw new RuntimeException("Target stream is not active");
+            throw new BusinessRuleException("Target stream is not active");
         }
 
         student.setStream(newStream);
-        return studentRepo.save(student);
+        Student saved = studentRepo.save(student);
+
+        log.info("Student transferred: admission={} from={} to={} by={}",
+                saved.getAdmissionNumber(), fromStream, newStream.getStreamName(), caller.getUserName());
+
+        return saved;
     }
 
     public boolean admissionExists(String admNumber){
@@ -117,7 +139,7 @@ public class StudentService {
 
     private Student getStudentById(int studentId) {
         return studentRepo.findById(studentId).orElseThrow(
-                ()->new RuntimeException("Student not found")
+                ()->new ResourceNotFoundException("Student not found")
         );
     }
 

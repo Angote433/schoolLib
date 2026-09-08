@@ -1,5 +1,8 @@
 package com.arnold.autolibrary.config;
+import com.arnold.autolibrary.security.CustomAccessDeniedHandler;
+import com.arnold.autolibrary.security.CustomAuthenticationEntryPoint;
 import com.arnold.autolibrary.security.JwtAuthFilter;
+import com.arnold.autolibrary.security.RequestLoggingFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,13 +27,22 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RequestLoggingFilter requestLoggingFilter;
     private final CustomUserDetailsService customUserDetailsService;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
-            CustomUserDetailsService customUserDetailsService) {
+            RequestLoggingFilter requestLoggingFilter,
+            CustomUserDetailsService customUserDetailsService,
+            CustomAccessDeniedHandler accessDeniedHandler,
+            CustomAuthenticationEntryPoint authenticationEntryPoint) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.requestLoggingFilter = requestLoggingFilter;
         this.customUserDetailsService = customUserDetailsService;
+        this.accessDeniedHandler = accessDeniedHandler;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Bean
@@ -130,10 +142,26 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // Step 6 — add JWT filter before Spring's default auth filter
+                // Step 6 — add JWT filter before Spring's default auth filter,
+                // and the request-logging filter before that so it wraps the
+                // whole chain (see RequestLoggingFilter for why).
                 .addFilterBefore(
                         jwtAuthFilter,
                         UsernamePasswordAuthenticationFilter.class
+                )
+                .addFilterBefore(
+                        requestLoggingFilter,
+                        JwtAuthFilter.class
+                )
+
+                // Step 7 — route-level denials (hasRole mismatch, no/bad
+                // token) happen inside this filter chain, before any
+                // controller — without this they'd bypass
+                // GlobalExceptionHandler entirely and return Spring's bare
+                // default response with no logging.
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .authenticationEntryPoint(authenticationEntryPoint)
                 );
 
         return http.build();

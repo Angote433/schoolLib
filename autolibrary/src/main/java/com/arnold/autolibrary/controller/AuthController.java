@@ -4,6 +4,8 @@ import com.arnold.autolibrary.model.Role;
 import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
 import com.arnold.autolibrary.util.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,8 @@ import java.util.Map;
 @RequestMapping("api/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private UserDetailsRepo userRepo;
     @Autowired
@@ -35,10 +39,12 @@ public class AuthController {
 
         //user exists?
         if(user == null){
+            log.warn("Login failed: user={} reason=USER_NOT_FOUND", request.getUserName());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }
         //user active?
         if(!user.isActive()){
+            log.warn("Login blocked: user={} reason=ACCOUNT_INACTIVE", user.getUserName());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account deactivated,contact the librarian");
 
         }
@@ -46,6 +52,7 @@ public class AuthController {
         //password matches?
         if (!passwordEncoder.matches(
                 request.getPassword(), user.getPasswordHash())) {
+            log.warn("Login failed: user={} reason=BAD_PASSWORD", user.getUserName());
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body("Invalid username or password");
@@ -73,6 +80,9 @@ public class AuthController {
                     user.getStream().getStreamName());
         }
 
+        log.info("Login success: user={} role={}{}", user.getUserName(), user.getRole(),
+                user.getStream() != null ? " streamId=" + user.getStream().getStreamId() : "");
+
         return ResponseEntity.ok(response);
 
     }
@@ -96,6 +106,8 @@ public class AuthController {
         librarian.setRole(Role.LIBRARIAN);
         librarian.setActive(true);
         userRepo.save(librarian);
+
+        log.info("Librarian registered: user={}", librarian.getUserName());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Librarian account created successfully");

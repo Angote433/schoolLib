@@ -1,6 +1,5 @@
 package com.arnold.autolibrary.controller;
 
-import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.DistributionRecord;
 import com.arnold.autolibrary.model.LossReport;
 import com.arnold.autolibrary.model.UserDetails;
@@ -32,20 +31,16 @@ public class DistributionController {
 
     @PostMapping
     public ResponseEntity<?>distributeBook(@RequestBody DistributionRequest request) {
-        try {
-            UserDetails caller = authUtil.getCurrentUser();
+        UserDetails caller = authUtil.getCurrentUser();
 
-            DistributionRecord record = distService.distributeBook(
-                    request.getQrCode(),
-                    request.getStudentId(),
-                    request.getAcademicYear(),
-                    caller
-                    );
+        DistributionRecord record = distService.distributeBook(
+                request.getQrCode(),
+                request.getStudentId(),
+                request.getAcademicYear(),
+                caller
+                );
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(record);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(record);
     }
 
 
@@ -55,12 +50,8 @@ public class DistributionController {
      */
     @PutMapping("/return/{qrCode}")
     public ResponseEntity<?>returnBook(@PathVariable String qrCode){
-        try{
-            DistributionRecord record = distService.returnBook(qrCode);
-            return ResponseEntity.ok(record);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        DistributionRecord record = distService.returnBook(qrCode);
+        return ResponseEntity.ok(record);
     }
 
     /*
@@ -69,38 +60,26 @@ public class DistributionController {
      */
     @PostMapping("/loss")
     public ResponseEntity<?>markBookLost(@RequestBody LossRequest request){
-        try{
-            UserDetails caller = authUtil.getCurrentUser();
+        UserDetails caller = authUtil.getCurrentUser();
 
-            LossReport report = distService.flagLost(
-                    request.getQrCode(),
-                    request.getReason(),
-                    caller
-            );
+        LossReport report = distService.flagLost(
+                request.getQrCode(),
+                request.getReason(),
+                caller
+        );
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(report);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(report);
     }
 
     //Dist records for a specific student over years
     @GetMapping("/student/{studentId}")
     public ResponseEntity<?>getStudentDistributions(@PathVariable int studentId){
-        try {
-            return ResponseEntity.ok(distService.getStudentDistributions(studentId));
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(distService.getStudentDistributions(studentId));
     }
 
     @GetMapping("/year/{academicYear}")
     public ResponseEntity<?>getYearlyDistRecords(@PathVariable int academicYear){
-        try {
-            return ResponseEntity.ok(distService.getByYear(academicYear));
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(distService.getByYear(academicYear));
     }
 
     /*
@@ -110,11 +89,7 @@ public class DistributionController {
     @GetMapping("/stream/{streamId}/year/{year}")
     public ResponseEntity<?>getStreamDistributions(
             @PathVariable int streamId, @PathVariable int year){
-        try {
-            return ResponseEntity.ok(distService.getByStreamAndYear(streamId, year));
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(distService.getByStreamAndYear(streamId, year));
     }
 
     /*
@@ -123,12 +98,8 @@ public class DistributionController {
      */
     @GetMapping("/isbn/{isbn}/stream/{streamId}")
     public ResponseEntity<?>getActiveByIsbnAndStream(@PathVariable String isbn, @PathVariable int streamId){
-        try{
-            List<DistributionRecord> records = distService.getActiveByIsbnAndStream(isbn, streamId);
-            return ResponseEntity.ok(records);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        List<DistributionRecord> records = distService.getActiveByIsbnAndStream(isbn, streamId);
+        return ResponseEntity.ok(records);
     }
 
     /*
@@ -137,20 +108,16 @@ public class DistributionController {
      */
     @PostMapping("/by-accession")
     public ResponseEntity<?>distributeByAccession(@RequestBody AccessionDistributionRequest request){
-        try{
-            UserDetails caller = authUtil.getCurrentUser();
+        UserDetails caller = authUtil.getCurrentUser();
 
-            DistributionRecord record = distService.distributeByAccessionNumber(
-                    request.getAccessionNumber(),
-                    request.getStudentId(),
-                    request.getAcademicYear(),
-                    caller
-            );
+        DistributionRecord record = distService.distributeByAccessionNumber(
+                request.getAccessionNumber(),
+                request.getStudentId(),
+                request.getAcademicYear(),
+                caller
+        );
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(record);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(record);
     }
 
     public static class AccessionDistributionRequest {

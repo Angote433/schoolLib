@@ -1,6 +1,5 @@
 package com.arnold.autolibrary.controller;
 
-import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.LossReport;
 import com.arnold.autolibrary.services.LossReportService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +16,7 @@ public class LossController {
 
     @GetMapping
     public ResponseEntity<?>getAllLosses(){
-        try {
-            return ResponseEntity.ok(service.getAllReports());
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(service.getAllReports());
     }
 
     /*
@@ -30,44 +25,24 @@ public class LossController {
 
     @GetMapping("/pending")
     public ResponseEntity<?>getPendingLosses(){
-        try {
-            return ResponseEntity.ok(service.getPendingReports());
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(service.getPendingReports());
     }
 
     @GetMapping("student/{studentId}")
     public ResponseEntity<?>getByStudent(@PathVariable int studentId){
-        try {
-            return ResponseEntity.ok(service.getReportByStudent(studentId));
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
+        return ResponseEntity.ok(service.getReportByStudent(studentId));
     }
 
     @PutMapping("/{id}/resolve")
     public ResponseEntity<?>resolveLoss(@PathVariable int id,@RequestBody ResolveRequest request){
-        try{
-            LossReport resolved = service.resolveReport(id,request.getNotes());
-
-            return ResponseEntity.ok(resolved);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
-
+        LossReport resolved = service.resolveReport(id,request.getNotes());
+        return ResponseEntity.ok(resolved);
     }
 
     @PutMapping("/{id}/writeoff")
     public ResponseEntity<?>writeOff(@PathVariable int id,@RequestBody ResolveRequest request){
-        try{
-            LossReport writtenOff = service.writeOff(id,request.getNotes());
-
-            return ResponseEntity.ok(writtenOff);
-        } catch (RuntimeException e) {
-            return ApiErrors.toResponse(e);
-        }
-
+        LossReport writtenOff = service.writeOff(id,request.getNotes());
+        return ResponseEntity.ok(writtenOff);
     }
 
     public static class ResolveRequest {

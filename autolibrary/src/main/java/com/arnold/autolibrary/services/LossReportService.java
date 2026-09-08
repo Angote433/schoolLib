@@ -1,5 +1,7 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.BusinessRuleException;
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.BookCopy;
 import com.arnold.autolibrary.model.BookStatus;
 import com.arnold.autolibrary.model.LossReport;
@@ -10,6 +12,8 @@ import com.arnold.autolibrary.repo.BookCopyRepo;
 import com.arnold.autolibrary.repo.LossReportRepo;
 import com.arnold.autolibrary.repo.StudentRepo;
 import com.arnold.autolibrary.security.AuthUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +23,9 @@ import java.util.List;
 
 @Service
 public class LossReportService {
+
+    private static final Logger log = LoggerFactory.getLogger(LossReportService.class);
+
     @Autowired
     private LossReportRepo lossRepo;
     @Autowired
@@ -41,7 +48,7 @@ public class LossReportService {
     public List<LossReport>getReportByStudent(int studentId){
         UserDetails caller = authUtil.getCurrentUser();
         Student student = studentRepo.findById(studentId).orElseThrow(
-                ()->new RuntimeException("Student not found")
+                ()->new ResourceNotFoundException("Student not found")
         );
         authUtil.assertCanAccessStream(caller, student.getStream().getStreamId());
         return lossRepo.findByStudentStudentId(studentId);
@@ -65,10 +72,10 @@ public class LossReportService {
         authUtil.assertLibrarian(caller);
 
         LossReport report = lossRepo.findById(reportId).orElseThrow(
-                ()->new RuntimeException("Report not found")
+                ()->new ResourceNotFoundException("Report not found")
         );
         if(report.getResolutionStatus() != ResolutionStatus.PENDING){
-            throw new RuntimeException("This report is already "+report.getResolutionStatus());
+            throw new BusinessRuleException("This report is already "+report.getResolutionStatus());
         }
         report.setResolutionStatus(ResolutionStatus.RESOLVED);
         report.setDateResolved(LocalDate.now());
@@ -79,7 +86,9 @@ public class LossReportService {
         copy.setStatus(BookStatus.AVAILABLE);
         bookCopyRepo.save(copy);
 
-        return lossRepo.save(report);
+        LossReport saved = lossRepo.save(report);
+        log.info("Loss resolved: reportId={} by={} notes='{}'", reportId, caller.getUserName(), notes);
+        return saved;
     }
 
     // Librarian only — the school absorbing the loss is an
@@ -89,12 +98,14 @@ public class LossReportService {
         authUtil.assertLibrarian(caller);
 
         LossReport report = lossRepo.findById(reportId).orElseThrow(
-                ()->new RuntimeException("Report not found")
+                ()->new ResourceNotFoundException("Report not found")
         );
         report.setResolutionStatus(ResolutionStatus.WRITTEN_OFF);
         report.setDateResolved(LocalDate.now());
         report.setNotes(notes);
 
-        return lossRepo.save(report);
+        LossReport saved = lossRepo.save(report);
+        log.info("Loss written off: reportId={} by={}", reportId, caller.getUserName());
+        return saved;
     }
 }

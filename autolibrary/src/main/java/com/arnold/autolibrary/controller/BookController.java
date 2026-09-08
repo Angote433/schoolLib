@@ -28,12 +28,8 @@ public class BookController {
 
     @PostMapping
     public ResponseEntity<?> registerBook(@RequestBody BookDetails bookDetails){
-        try{
-            BookDetails registered = bookService.registerTitle(bookDetails);
-            return  ResponseEntity.status(HttpStatus.CREATED).body(registered);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        BookDetails registered = bookService.registerTitle(bookDetails);
+        return  ResponseEntity.status(HttpStatus.CREATED).body(registered);
     }
 
     @GetMapping
@@ -44,13 +40,8 @@ public class BookController {
     //One book
     @GetMapping("/{id}")
     public ResponseEntity<?>getBookById(@PathVariable int id){
-        try{
-            BookDetails book = bookService.getBookByID(id);
-            return ResponseEntity.ok(book);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-
+        BookDetails book = bookService.getBookByID(id);
+        return ResponseEntity.ok(book);
     }
 
     @GetMapping("/grade/{gradeLevel}")
@@ -64,26 +55,16 @@ public class BookController {
             @PathVariable int id, @RequestParam int quantity,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate dateAcquired
             ){
-
-        try{
-           List<BookCopy> copies = bookService.registerMultipleCopies(id,quantity,dateAcquired);
-           return ResponseEntity.status(HttpStatus.CREATED).body(copies);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-
+        List<BookCopy> copies = bookService.registerMultipleCopies(id,quantity,dateAcquired);
+        return ResponseEntity.status(HttpStatus.CREATED).body(copies);
     }
 
 
     //get copies of a specific book title
     @GetMapping("/copies/{bookId}")
     public ResponseEntity<?>getCopiesByBook(@PathVariable int bookId){
-        try{
-            List<BookCopy>copies = bookService.getCopiesByByBook(bookId);
-            return ResponseEntity.ok(copies);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        List<BookCopy>copies = bookService.getCopiesByByBook(bookId);
+        return ResponseEntity.ok(copies);
     }
 
     //available copies
@@ -95,50 +76,35 @@ public class BookController {
     //Scan code
     @GetMapping("/scan/{qrCode}")
     public ResponseEntity<?>scanBook(@PathVariable String qrCode){
-        try{
-            BookCopy book = bookService.findByQR(qrCode);
-            return ResponseEntity.ok(book);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        BookCopy book = bookService.findByQR(qrCode);
+        return ResponseEntity.ok(book);
     }
 
     //Teacher scans ISBN barcode on book back cover - returns the title details
     @GetMapping("/isbn/{isbn}")
     public ResponseEntity<?>getBookByIsbn(@PathVariable String isbn){
-        try{
-            BookDetails book = bookService.getByIsbn(isbn);
-            return ResponseEntity.ok(book);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        BookDetails book = bookService.getByIsbn(isbn);
+        return ResponseEntity.ok(book);
     }
 
     //Teacher types the accession number written inside the book cover
     @GetMapping("/accession/{accessionNumber}")
     public ResponseEntity<?>getByAccessionNumber(@PathVariable String accessionNumber){
-        try{
-            BookCopy copy = bookService.findByAccessionNumber(accessionNumber);
-            return ResponseEntity.ok(copy);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        BookCopy copy = bookService.findByAccessionNumber(accessionNumber);
+        return ResponseEntity.ok(copy);
     }
 
     //Generates and returns qr as image-Librarian to use this to print the stickers
     @GetMapping("/copies/{copyId}/qr-image")
-    public ResponseEntity<?>getQrCodeImage(@PathVariable int copyId){
-        try{
-            BookCopy bookCopy = bookService.getCopyById(copyId);
-            //generate the image
-            byte[]qrImage = qrGenerator.generateQrCode(bookCopy.getQrCode(),300,300);
-            HttpHeaders header = new HttpHeaders();
-            header.setContentType(MediaType.IMAGE_PNG);
+    public ResponseEntity<?>getQrCodeImage(@PathVariable int copyId)
+            throws com.google.zxing.WriterException, java.io.IOException {
+        BookCopy bookCopy = bookService.getCopyById(copyId);
+        //generate the image
+        byte[]qrImage = qrGenerator.generateQrCode(bookCopy.getQrCode(),300,300);
+        HttpHeaders header = new HttpHeaders();
+        header.setContentType(MediaType.IMAGE_PNG);
 
-            return new ResponseEntity<>(qrImage,header, HttpStatus.OK);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return new ResponseEntity<>(qrImage,header, HttpStatus.OK);
     }
 
 }

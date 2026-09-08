@@ -1,9 +1,12 @@
 package com.arnold.autolibrary.security;
 
 import com.arnold.autolibrary.exception.NoStreamAssignedException;
+import com.arnold.autolibrary.exception.StreamAccessException;
 import com.arnold.autolibrary.model.Role;
 import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Component;
 // the permission check must always come from here.
 @Component
 public class AuthUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthUtil.class);
 
     @Autowired
     private UserDetailsRepo userDetailsRepo;
@@ -57,7 +62,7 @@ public class AuthUtil {
         }
         Integer callerStreamId = getCallerStreamId(caller);
         if (targetStreamId == null || !callerStreamId.equals(targetStreamId)) {
-            throw new AccessDeniedException("You do not have access to this stream.");
+            throw new StreamAccessException("You do not have access to this stream.");
         }
     }
 

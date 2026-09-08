@@ -1,10 +1,14 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.BusinessRuleException;
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.Role;
 import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.repo.StreamRepo;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,6 +17,9 @@ import java.util.List;
 
 @Service
 public class UserDetailsService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
+
     @Autowired
     UserDetailsRepo userDetailsRepo;
 
@@ -25,7 +32,7 @@ public class UserDetailsService {
     public UserDetails createUser(UserDetails user){
         //username to be unique
         if(userDetailsRepo.existsByUserName(user.getUserName())){
-            throw new RuntimeException("Username already exists");
+            throw new BusinessRuleException("Username already exists");
         }
 
         user.setPasswordHash(
@@ -33,7 +40,9 @@ public class UserDetailsService {
         );
 
         user.setActive(true);
-        return userDetailsRepo.save(user);
+        UserDetails saved = userDetailsRepo.save(user);
+        log.info("User created: user={} role={}", saved.getUserName(), saved.getRole());
+        return saved;
     }
 
     public List<UserDetails>getAllUSers(){
@@ -42,7 +51,7 @@ public class UserDetailsService {
 
     public UserDetails getUserById(int userId){
         return userDetailsRepo.findById(userId).orElseThrow(
-                ()->new RuntimeException("User not found with id "+ userId)
+                ()->new ResourceNotFoundException("User not found with id "+ userId)
         );
     }
 
@@ -52,7 +61,7 @@ public class UserDetailsService {
 
     public UserDetails deactivateUser(int userId){
         UserDetails user = userDetailsRepo.findById(userId).orElseThrow(
-                ()->new RuntimeException("User not found")
+                ()->new ResourceNotFoundException("User not found")
         );
         //cannot deactivate the only librarian
         if(user.getRole() == Role.LIBRARIAN){
@@ -60,40 +69,44 @@ public class UserDetailsService {
                     .filter(UserDetails::isActive).count();
 
             if(librarianCount <=1){
-                throw new RuntimeException("Cannot deactivate the only librarian");
+                throw new BusinessRuleException("Cannot deactivate the only librarian");
             }
 
         }
         user.setActive(false);
-        return userDetailsRepo.save(user);
+        UserDetails saved = userDetailsRepo.save(user);
+        log.info("User deactivated: user={}", saved.getUserName());
+        return saved;
     }
 
     public UserDetails activateUser(int userId){
         UserDetails user = userDetailsRepo.findById(userId).orElseThrow(
-                ()->new RuntimeException("User not found")
+                ()->new ResourceNotFoundException("User not found")
         );
         user.setActive(true);
-        return userDetailsRepo.save(user);
+        UserDetails saved = userDetailsRepo.save(user);
+        log.info("User activated: user={}", saved.getUserName());
+        return saved;
     }
 
     @org.springframework.transaction.annotation.Transactional
     public UserDetails assignStream(int userId,int streamId){
         UserDetails user = userDetailsRepo.findById(userId).orElseThrow(
-                ()->new RuntimeException("User not found")
+                ()->new ResourceNotFoundException("User not found")
         );
         //only teachers get assigned streams
         if(user.getRole() != Role.TEACHER  ){
-            throw new RuntimeException("Only teachers are assigned streams");
+            throw new BusinessRuleException("Only teachers are assigned streams");
         }
 
         Stream stream = streamRepo.findById(streamId).orElseThrow(
-                ()->new RuntimeException("Stream not found with id"+ streamId)
+                ()->new ResourceNotFoundException("Stream not found with id"+ streamId)
         );
 
         //teacher already managing a different stream?
         streamRepo.findByTeacher(user).ifPresent(existingStream -> {
             if(existingStream.getStreamId() != streamId){
-                throw new RuntimeException("Teacher manages another stream "+ existingStream.getStreamName());
+                throw new BusinessRuleException("Teacher manages another stream "+ existingStream.getStreamName());
             }
         });
 
@@ -109,6 +122,8 @@ public class UserDetailsService {
         stream.setTeacher(user);
         streamRepo.save(stream);
 
-        return userDetailsRepo.save(user);
+        UserDetails saved = userDetailsRepo.save(user);
+        log.info("Teacher assigned to stream: user={} stream={}", saved.getUserName(), stream.getStreamName());
+        return saved;
     }
 }

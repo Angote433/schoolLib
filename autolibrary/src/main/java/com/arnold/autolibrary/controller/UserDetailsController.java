@@ -49,15 +49,9 @@ public class UserDetailsController {
 
     @PostMapping
     public ResponseEntity<?>createUser(@RequestBody UserDetails userDetails){
-        System.out.println(userDetails.getUserName());
-        System.out.println(userDetails.getStream());
-        try{
-            UserDetails created = userdetailsService.createUser(userDetails);
-            UserResponse response = new UserResponse(created.getUserId(), created.getUserName(), created.getRole());
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        UserDetails created = userdetailsService.createUser(userDetails);
+        UserResponse response = new UserResponse(created.getUserId(), created.getUserName(), created.getRole());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
@@ -67,57 +61,40 @@ public class UserDetailsController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?>getUserById(@PathVariable int id){
-        try {
-            UserDetails user = userdetailsService.getUserById(id);
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
-
+        UserDetails user = userdetailsService.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
     //get users by role
     @GetMapping("/role/{role}")
     public ResponseEntity<?>getUserByRole(@PathVariable String role){
+        Role roleVal;
         try {
-            Role roleVal = Role.valueOf(role.toUpperCase());
-            List<UserDetails> users = userdetailsService.getUsersByRole(roleVal);
-            return ResponseEntity.ok(users);
-        }catch(IllegalArgumentException e){
-            return ResponseEntity.badRequest().body("Invalid role.Use TEACHER or LIBRARIAN");
+            roleVal = Role.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role. Use TEACHER or LIBRARIAN");
         }
+        List<UserDetails> users = userdetailsService.getUsersByRole(roleVal);
+        return ResponseEntity.ok(users);
     }
 
     //deactivate user
     @PutMapping("/{id}/deactivate")
     public ResponseEntity<?>deactivateUser(@PathVariable int id){
-        try{
-            UserDetails updated = userdetailsService.deactivateUser(id);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        UserDetails updated = userdetailsService.deactivateUser(id);
+        return ResponseEntity.ok(updated);
     }
     //activate user
     @PutMapping("{id}/activate")
     public ResponseEntity<?>activateUser(@PathVariable int id){
-        try{
-            UserDetails updated = userdetailsService.activateUser(id);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        UserDetails updated = userdetailsService.activateUser(id);
+        return ResponseEntity.ok(updated);
     }
 
     //Assigning teacher to a stream
     @PutMapping("/{id}/stream")
     public ResponseEntity<?>assignStream(@PathVariable int id,@RequestParam int streamId){
-        try{
-            UserDetails updated = userdetailsService.assignStream(id,streamId);
-            return ResponseEntity.ok(updated);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        UserDetails updated = userdetailsService.assignStream(id,streamId);
+        return ResponseEntity.ok(updated);
     }
 }

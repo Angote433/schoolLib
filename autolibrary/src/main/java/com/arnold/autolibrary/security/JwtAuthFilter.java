@@ -1,10 +1,15 @@
 package com.arnold.autolibrary.security;
 
 import com.arnold.autolibrary.util.JwtUtil;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -18,6 +23,8 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -29,41 +36,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-
-        System.out.println("AUTH HEADER: " + authHeader);
-
-
+        log.debug("Auth header present: {}", authHeader != null);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        // Never log the token itself — logging the header or the raw
+        // token value here previously leaked credentials to the console.
         String token = authHeader.substring(7);
-        System.out.println("TOKEN: " + token.substring(0, 20) + "...");
 
         try {
             String username = jwtUtil.extractUserName(token);
-            System.out.println("EXTRACTED USERNAME: " + username);
 
-            // Only set authentication if:
-            // 1. Username was extracted successfully
-            // 2. No authentication already set in this request
-            // 3.
             if (username != null &&
-                    SecurityContextHolder.getContext()
-                            .getAuthentication() == null &&
-                    !jwtUtil.isTokenExpired(token)) {
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 String role = jwtUtil.extractRole(token);
-                System.out.println("ROLE: " + role);
 
-                // Create authentication object
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 username,
                                 null,
-
                                 List.of(new SimpleGrantedAuthority("ROLE_" + role))
                         );
 
@@ -72,19 +67,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                 .buildDetails(request)
                 );
 
-
                 SecurityContextHolder.getContext()
                         .setAuthentication(authToken);
 
-                System.out.println("AUTHENTICATION SET FOR: " + username
-                        + " with role ROLE_" + role);
-            } else {
-                System.out.println("AUTH NOT SET — username: " + username
-                        + " expired: " + jwtUtil.isTokenExpired(token));
+                // RequestLoggingFilter only resolves the final username at
+                // the very end of the chain (for the completion line) —
+                // anything logged mid-request (e.g. GlobalExceptionHandler,
+                // CustomAccessDeniedHandler) needs it in MDC now.
+                MDC.put("user", username);
+
+                log.debug("Authentication set: user={} role=ROLE_{}", username, role);
             }
 
-        } catch (Exception e) {
-            System.out.println("JWT FILTER ERROR: " + e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT rejected: reason=EXPIRED user={}", e.getClaims().getSubject());
+            SecurityContextHolder.clearContext();
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("JWT rejected: reason=MALFORMED");
             SecurityContextHolder.clearContext();
         }
 

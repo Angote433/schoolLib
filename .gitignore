@@ -1,6 +1,7 @@
 # Backend
 autolibrary/target/
 autolibrary/.mvn/
+autolibrary/logs/
 *.class
 *.jar
 !*-sources.jar

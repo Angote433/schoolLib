@@ -17,12 +17,8 @@ public class SchoolController {
 
     @PostMapping
     public ResponseEntity<?>createClass(@RequestBody SchoolClass schoolClass){
-        try{
-            SchoolClass created = schoolClassService.addClass(schoolClass);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        }catch(RuntimeException e ){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        SchoolClass created = schoolClassService.addClass(schoolClass);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping

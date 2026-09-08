@@ -24,20 +24,16 @@ public class BorrowController {
 
     @PostMapping
     public ResponseEntity<?>borrowBook(@RequestBody BorrowRequest borrowRequest){
-        try{
-            UserDetails librarian = userDetailsService.getUserById(borrowRequest.getLibrarianId());
+        UserDetails librarian = userDetailsService.getUserById(borrowRequest.getLibrarianId());
 
-            BorrowRecord record = borrowService.borrowBoook(
-                    borrowRequest.getQrCode(),
-                    borrowRequest.getStudentId(),
-                    borrowRequest.getDateDue(),
-                    librarian
-            );
+        BorrowRecord record = borrowService.borrowBoook(
+                borrowRequest.getQrCode(),
+                borrowRequest.getStudentId(),
+                borrowRequest.getDateDue(),
+                librarian
+        );
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(record);
-        }catch(RuntimeException e ){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(record);
     }
 
     /*
@@ -45,12 +41,8 @@ public class BorrowController {
      */
     @PutMapping("/return/{qrCode}")
     public ResponseEntity<?>returnBook(@PathVariable String qrCode){
-        try{
-            BorrowRecord record  = borrowService.returnBook(qrCode);
-            return ResponseEntity.ok(record);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        BorrowRecord record  = borrowService.returnBook(qrCode);
+        return ResponseEntity.ok(record);
     }
     @GetMapping("/active")
     public ResponseEntity<List<BorrowRecord>>getActiveBorrows(){
@@ -73,16 +65,11 @@ public class BorrowController {
 
     @PostMapping("/loss")
     public ResponseEntity<?>flagLost(@RequestBody BorrowLossRequest request){
-        try{
-            LossReport report = borrowService.flagAsLost(
-                    request.getQrCode(),
-                    request.getReason()
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(report);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        LossReport report = borrowService.flagAsLost(
+                request.getQrCode(),
+                request.getReason()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(report);
     }
     public static class BorrowRequest {
         private String qrCode;

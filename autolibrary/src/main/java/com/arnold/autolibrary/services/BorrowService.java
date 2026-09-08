@@ -1,19 +1,27 @@
 package com.arnold.autolibrary.services;
 
+import com.arnold.autolibrary.exception.BusinessRuleException;
+import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.*;
 import com.arnold.autolibrary.repo.BookCopyRepo;
 import com.arnold.autolibrary.repo.BorrowRecordRepo;
 import com.arnold.autolibrary.repo.LossReportRepo;
 import com.arnold.autolibrary.repo.StudentRepo;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
 public class BorrowService {
+
+    private static final Logger log = LoggerFactory.getLogger(BorrowService.class);
+
     @Autowired
     private BorrowRecordRepo borrowRepo;
 
@@ -37,23 +45,24 @@ public class BorrowService {
          */
 
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(
-                ()->new RuntimeException("Book not found")
+                ()->new ResourceNotFoundException("Book not found")
         );
 
         if(book.getStatus()!= BookStatus.AVAILABLE){
-            throw new RuntimeException("Book is not available. Status: "+book.getStatus() );
+            log.warn("Issue rejected: accession={} reason=NOT_AVAILABLE status={}", qrCode, book.getStatus());
+            throw new BusinessRuleException("Book is not available. Status: "+book.getStatus() );
         }
 
         Student student = studRepo.findById(studentId).orElseThrow(
-                ()->new RuntimeException("Student not found")
+                ()->new ResourceNotFoundException("Student not found")
         );
 
         if(!student.isActive()){
-            throw new RuntimeException("Cannot distribute to inactive students.");
+            throw new BusinessRuleException("Cannot distribute to inactive students.");
         }
 
         if(dateDue.isBefore(LocalDate.now())){
-            throw new RuntimeException("Due date cannot be in the past");
+            throw new BusinessRuleException("Due date cannot be in the past");
         }
 
         BorrowRecord borrowRecord = new BorrowRecord(book,student,dateDue,issuedBy);
@@ -62,17 +71,20 @@ public class BorrowService {
         book.setStatus(BookStatus.BORROWED);
         bookRepo.save(book);
 
+        log.info("Book issued: accession={} student={} due={} by={}",
+                qrCode, student.getAdmissionNumber(), dateDue, issuedBy.getUserName());
+
         return borrowRecord;
 
     }
     @Transactional
     public BorrowRecord returnBook(String qrCode){
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(
-                ()->new RuntimeException("Book not found")
+                ()->new ResourceNotFoundException("Book not found")
         );
 
         BorrowRecord borrowRecord = borrowRepo.findByBookCopyBookIdAndStatus(book.getBookId(),BorrowStatus.ACTIVE)
-                .orElseThrow(()->new RuntimeException("No active borrow for this book found"));
+                .orElseThrow(()->new ResourceNotFoundException("No active borrow for this book found"));
 
         borrowRecord.setDateReturned(LocalDate.now());
         borrowRecord.setStatus(BorrowStatus.RETURNED);
@@ -81,6 +93,10 @@ public class BorrowService {
         book.setStatus(BookStatus.AVAILABLE);
         bookRepo.save(book);
 
+        long daysOverdue = Math.max(0, ChronoUnit.DAYS.between(borrowRecord.getDateDue(), LocalDate.now()));
+        log.info("Book returned: accession={} student={} daysOverdue={}",
+                qrCode, borrowRecord.getStudent().getAdmissionNumber(), daysOverdue);
+
         return borrowRecord;
     }
 
@@ -88,13 +104,13 @@ public class BorrowService {
     @Transactional
     public LossReport flagAsLost(String qrCode,String reason){
         BookCopy book = bookRepo.findByQrCode(qrCode).orElseThrow(
-                ()->new RuntimeException("Book not found ")
+                ()->new ResourceNotFoundException("Book not found ")
         );
 
         BorrowRecord record = borrowRepo
                 .findByBookCopyBookIdAndStatus(
                         book.getBookId(), BorrowStatus.ACTIVE)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "No active borrow found for this book"
                 ));
         LossReport lossReport = new LossReport(book,record.getStudent(),LossSource.BORROWING,reason);
@@ -105,6 +121,9 @@ public class BorrowService {
 
         book.setStatus(BookStatus.LOST);
         bookRepo.save(book);
+
+        log.info("Loss report created: reportId={} student={} source=BORROWING",
+                lossReport.getReportId(), record.getStudent().getAdmissionNumber());
 
         return lossReport;
 

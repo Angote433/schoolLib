@@ -1,6 +1,5 @@
 package com.arnold.autolibrary.controller;
 
-import com.arnold.autolibrary.exception.ApiErrors;
 import com.arnold.autolibrary.model.SchoolClass;
 import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.services.StreamService;
@@ -19,13 +18,8 @@ public class StreamController {
     StreamService streamService;
     @PostMapping
     public ResponseEntity<?> createStream(@RequestBody Stream stream ,@RequestParam int classId){
-        try{
-            Stream created = streamService.createStream(stream,classId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-
+        Stream created = streamService.createStream(stream,classId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping
@@ -43,23 +37,15 @@ public class StreamController {
     // selector) — access to any other stream id is scoped in the service.
     @GetMapping("/{id}")
     public ResponseEntity<?>getStreamById(@PathVariable int id){
-        try{
-            Stream stream = streamService.getStreamById(id);
-            return ResponseEntity.ok(stream);
-        }catch(RuntimeException e){
-            return ApiErrors.toResponse(e, HttpStatus.NOT_FOUND);
-        }
+        Stream stream = streamService.getStreamById(id);
+        return ResponseEntity.ok(stream);
     }
 
     //Assingning a teacehr to a stream
     @PutMapping("/{id}/teacher")
     public ResponseEntity<?>AssignTeacher(@PathVariable int id , @RequestParam int userId){
-        try{
-            Stream updated = streamService.assignTeacher(id,userId);
-            return ResponseEntity.ok(updated);
-        }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        Stream updated = streamService.assignTeacher(id,userId);
+        return ResponseEntity.ok(updated);
     }
 
 
