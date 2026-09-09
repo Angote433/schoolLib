@@ -4,6 +4,7 @@ import { tokens } from '../styles/tokens';
 import {
   Modal, FormField, Input, Button, Banner, EmptyState, Card, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Classes() {
@@ -289,7 +290,7 @@ export default function Classes() {
       {loadingClasses ? (
         <div style={styles.loadingText}>Loading classes…</div>
       ) : classes.length === 0 ? (
-        <EmptyState icon="🏫" title="No classes yet" subtitle='Click "Add Class" to create the first class' />
+        <EmptyState icon="layers" title="No classes yet" subtitle='Click "Add Class" to create the first class' />
       ) : (
         <div style={styles.classesList}>
           {classes.map((cls) => {
@@ -440,7 +441,9 @@ export default function Classes() {
 
           {teachers.length === 0 ? (
             <div style={styles.noTeachersMsg}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
+              <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+              <Icon name="user" size={32} color={tokens.colors.textMuted} />
+            </div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>No teachers available</div>
               <div style={{ color: tokens.colors.textMuted, fontSize: 13 }}>
                 Go to the Users page to add teachers first, then come back to assign one.
@@ -475,7 +478,7 @@ export default function Classes() {
                         </div>
                       </div>
                       {selectedTeacherId === String(teacher.userId) && (
-                        <span style={styles.checkmark}>✓</span>
+                        <Icon name="check" size={16} color={tokens.colors.success} />
                       )}
                     </div>
                   );
@@ -512,7 +515,9 @@ export default function Classes() {
         <Modal title="Remove Teacher" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+              <Icon name="alert-triangle" size={40} color={tokens.colors.warning} />
+            </div>
             <p style={styles.confirmText}>
               Remove <strong>{selectedStream?.teacher?.fullName}</strong> from stream{' '}
               <strong>{selectedStream?.streamName}</strong>?
@@ -561,7 +566,7 @@ function StreamCard({ stream, onAssignTeacher, onRemoveTeacher }) {
           style={{ flex: 1 }}
           onClick={() => onAssignTeacher(stream)}
         >
-          {hasTeacher ? '↩ Reassign' : '+ Assign Teacher'}
+          {hasTeacher ? <><Icon name="repeat" size={14} /> Reassign</> : '+ Assign Teacher'}
         </Button>
         {hasTeacher && (
           <Button

@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { tokens } from '../styles/tokens';
 import { Input, Button, Banner } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Login() {
@@ -91,7 +92,7 @@ export default function Login() {
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.iconWrap}>
-            <span style={styles.icon}>📚</span>
+            <Icon name="book" size={32} color={tokens.colors.primary} />
           </div>
           <h1 style={styles.title}>School Library</h1>
           <p style={styles.subtitle}>Sign in to manage your library</p>

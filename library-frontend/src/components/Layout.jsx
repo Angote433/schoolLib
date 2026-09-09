@@ -4,20 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import { lossService } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import { Avatar } from './SharedComponents';
+import Icon from './Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 // Navigation items — each one is a link in the sidebar
-// path = URL, label = display text, icon = emoji for now
+// path = URL, label = display text, icon = name from components/Icon.jsx
 const NAV_ITEMS = [
-  { path: '/dashboard',     label: 'Dashboard',        icon: '📊', section: 'Overview' },
-  { path: '/settings',      label: 'Settings',         icon: '⚙️', section: 'Overview' },
-  { path: '/classes',       label: 'Classes & Streams', icon: '🏫', section: 'People' },
-  { path: '/users',         label: 'Users',             icon: '👥', section: 'People' },
-  { path: '/students',      label: 'Students',          icon: '🎓', section: 'People' },
-  { path: '/books',         label: 'Books',             icon: '📚', section: 'Library' },
-  { path: '/distributions', label: 'Distributions',     icon: '📦', section: 'Library' },
-  { path: '/borrows',       label: 'Borrows',           icon: '📖', section: 'Library' },
-  { path: '/losses',        label: 'Loss Reports',      icon: '⚠️', section: 'Library' },
+  { path: '/dashboard',     label: 'Dashboard',        icon: 'dashboard', section: 'Overview' },
+  { path: '/settings',      label: 'Settings',         icon: 'settings', section: 'Overview' },
+  { path: '/classes',       label: 'Classes & Streams', icon: 'layers', section: 'People' },
+  { path: '/users',         label: 'Users',             icon: 'users', section: 'People' },
+  { path: '/students',      label: 'Students',          icon: 'students', section: 'People' },
+  { path: '/books',         label: 'Books',             icon: 'book', section: 'Library' },
+  { path: '/distributions', label: 'Distributions',     icon: 'package', section: 'Library' },
+  { path: '/borrows',       label: 'Borrows',           icon: 'book-open', section: 'Library' },
+  { path: '/losses',        label: 'Loss Reports',      icon: 'alert-triangle', section: 'Library' },
 ];
 
 // Breadcrumb section shown in the top bar next to the page title —
@@ -135,7 +136,7 @@ export default function Layout({ children }) {
 
         {/* Logo area */}
         <div style={styles.logoArea}>
-          <span style={styles.logoIcon}>📚</span>
+          <Icon name="book" size={36} color={tokens.colors.accent} />
           {!showCollapsedVisuals && (
             <div>
               <div style={styles.logoText}>School Library</div>
@@ -148,7 +149,7 @@ export default function Layout({ children }) {
               style={styles.drawerCloseBtn}
               aria-label="Close menu"
             >
-              ✕
+              <Icon name="x" size={18} />
             </button>
           )}
         </div>
@@ -197,7 +198,7 @@ export default function Layout({ children }) {
                     }}
                     title={showCollapsedVisuals ? item.label : ''}
                   >
-                    <span style={styles.navIcon}>{item.icon}</span>
+                    <span style={styles.navIcon}><Icon name={item.icon} size={20} /></span>
                     {!showCollapsedVisuals && <span style={styles.navLabel}>{item.label}</span>}
                     {isActive && !showCollapsedVisuals && <span style={styles.navActiveDot} />}
                   </button>
@@ -214,8 +215,8 @@ export default function Layout({ children }) {
             style={styles.collapseBtn}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <span style={{ display: 'inline-block', transition: 'transform 0.25s ease', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
-              ←
+            <span style={{ display: 'inline-flex', transition: 'transform 0.25s ease', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
+              <Icon name="chevron-left" size={16} />
             </span>
             {!collapsed && <span>Collapse</span>}
           </button>
@@ -233,7 +234,7 @@ export default function Layout({ children }) {
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
             title={showCollapsedVisuals ? 'Logout' : ''}
           >
-            <span>🚪</span>
+            <Icon name="log-out" size={18} />
             {!showCollapsedVisuals && <span>Logout</span>}
           </button>
         </div>
@@ -252,7 +253,7 @@ export default function Layout({ children }) {
                 style={styles.hamburgerBtn}
                 aria-label="Open menu"
               >
-                ☰
+                <Icon name="menu" size={22} />
               </button>
             )}
 
@@ -280,7 +281,7 @@ export default function Layout({ children }) {
               onMouseEnter={e => e.currentTarget.style.background = tokens.colors.surface}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              🔔
+              <Icon name="bell" size={20} color={tokens.colors.textSecondary} />
               {pendingLossCount > 0 && (
                 <span style={styles.bellBadge}>
                   {pendingLossCount > 9 ? '9+' : pendingLossCount}

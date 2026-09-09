@@ -6,6 +6,7 @@ import {
   Modal, FormField, Input, Button, Banner, EmptyState,
   Tabs, Card, Avatar, ModalActions,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -212,7 +213,7 @@ export default function Users() {
         />
         <Input
           style={{ ...styles.searchInput, ...(isMobile ? { width: '100%' } : {}) }}
-          placeholder="🔍  Search by name or username..."
+          placeholder="Search by name or username..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
@@ -223,7 +224,7 @@ export default function Users() {
         <div style={styles.loadingText}>Loading users…</div>
       ) : filteredUsers.length === 0 ? (
         <EmptyState
-          icon="👤"
+          icon="user"
           title={searchText ? 'No users match your search' : 'No users found'}
           subtitle={!searchText && 'Click "Create User" to add the first user'}
         />
@@ -295,12 +296,12 @@ export default function Users() {
                   }}
                   onClick={() => setForm({ ...form, role: 'TEACHER' })}
                 >
-                  <span style={styles.roleOptionIcon}>🎓</span>
+                  <span style={styles.roleOptionIcon}><Icon name="students" size={20} /></span>
                   <div>
                     <div style={styles.roleOptionName}>Teacher</div>
                     <div style={styles.roleOptionDesc}>Can manage students and scan books</div>
                   </div>
-                  {form.role === 'TEACHER' && <span style={styles.checkmark}>✓</span>}
+                  {form.role === 'TEACHER' && <Icon name="check" size={16} color={tokens.colors.success} style={{ marginLeft: 'auto' }} />}
                 </div>
 
                 <div
@@ -310,12 +311,12 @@ export default function Users() {
                   }}
                   onClick={() => setForm({ ...form, role: 'LIBRARIAN' })}
                 >
-                  <span style={styles.roleOptionIcon}>📚</span>
+                  <span style={styles.roleOptionIcon}><Icon name="book" size={20} /></span>
                   <div>
                     <div style={styles.roleOptionName}>Librarian</div>
                     <div style={styles.roleOptionDesc}>Full access to all features</div>
                   </div>
-                  {form.role === 'LIBRARIAN' && <span style={styles.checkmark}>✓</span>}
+                  {form.role === 'LIBRARIAN' && <Icon name="check" size={16} color={tokens.colors.success} style={{ marginLeft: 'auto' }} />}
                 </div>
               </div>
             </FormField>
@@ -337,7 +338,9 @@ export default function Users() {
         <Modal title="Deactivate Account" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
-            <div style={styles.confirmIcon}>⚠️</div>
+            <div style={styles.confirmIcon}>
+              <Icon name="alert-triangle" size={40} color={tokens.colors.warning} />
+            </div>
             <p style={styles.confirmText}>
               Are you sure you want to deactivate{' '}
               <strong>{selectedUser?.fullName}</strong>'s account?
@@ -361,7 +364,9 @@ export default function Users() {
         <Modal title="Activate Account" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
-            <div style={styles.confirmIcon}>✅</div>
+            <div style={styles.confirmIcon}>
+              <Icon name="check-circle" size={40} color={tokens.colors.success} />
+            </div>
             <p style={styles.confirmText}>
               Reactivate <strong>{selectedUser?.fullName}</strong>'s account?
             </p>
@@ -428,8 +433,10 @@ function UserCard({ user, streamName, isSelf, onDeactivate, onActivate, onResetP
             ...cardStyles.roleBadge,
             background: isLibrarian ? tokens.colors.infoLight : tokens.colors.successLight,
             color: isLibrarian ? tokens.colors.info : tokens.colors.success,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
-            {isLibrarian ? '📚 Librarian' : '🎓 Teacher'}
+            <Icon name={isLibrarian ? 'book' : 'students'} size={12} />
+            {isLibrarian ? 'Librarian' : 'Teacher'}
           </span>
           <span style={{
             ...cardStyles.statusBadge,

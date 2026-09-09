@@ -6,6 +6,7 @@ import {
   Modal, Input, Button, Banner, StatusBadge, Tabs, Card, Avatar, Textarea,
   ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Losses() {
@@ -243,7 +244,7 @@ export default function Losses() {
       </head>
       <body>
         <div class="header">
-          <div class="school-name">📚 School Library System</div>
+          <div class="school-name">School Library System</div>
           <div class="report-title">${title}</div>
           <div class="meta">
             <span>Generated: <strong>${new Date().toLocaleDateString('en-KE',{day:'numeric',month:'long',year:'numeric'})}</strong></span>
@@ -360,7 +361,7 @@ export default function Losses() {
               : 'All Loss Reports'
             )}
           >
-            ⬇️ Download Report
+            <Icon name="download" size={16} /> Download Report
           </Button>
         )}
       </div>
@@ -399,7 +400,7 @@ export default function Losses() {
             : 'All Loss Reports'
           )}
         >
-          ⬇️ Download Report
+          <Icon name="download" size={16} /> Download Report
         </Button>
       )}
 
@@ -414,10 +415,13 @@ export default function Losses() {
                 ...styles.filterChip,
                 ...(sourceFilter === src ? styles.filterChipActive : {}),
                 ...(isMobile ? { minHeight: 40, flexShrink: 0 } : {}),
+                display: 'inline-flex', alignItems: 'center', gap: 5,
               }}
               onClick={() => setSourceFilter(src)}
             >
-              {src === 'ALL' ? 'All' : src === 'DISTRIBUTION' ? '📦 Distribution' : '📖 Borrowing'}
+              {src === 'DISTRIBUTION' && <Icon name="package" size={14} />}
+              {src === 'BORROWING' && <Icon name="book-open" size={14} />}
+              {src === 'ALL' ? 'All' : src === 'DISTRIBUTION' ? 'Distribution' : 'Borrowing'}
             </button>
           ))}
           {filteredLosses.length > 0 && (
@@ -429,7 +433,7 @@ export default function Losses() {
                 sourceFilter === 'ALL' ? 'Loss Report' : `${sourceFilter} Loss Report`
               )}
             >
-              ⬇️ Download Filtered
+              <Icon name="download" size={16} /> Download Filtered
             </Button>
           )}
         </div>
@@ -442,7 +446,9 @@ export default function Losses() {
         ) : filteredLosses.length === 0 ? (
           <Card>
             <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>{tab === 'pending' ? '🎉' : '📋'}</div>
+              <div style={styles.emptyIcon}>
+                <Icon name={tab === 'pending' ? 'check-circle' : 'inbox'} size={40} color={tokens.colors.textMuted} />
+              </div>
               <div style={styles.emptyTitle}>{tab === 'pending' ? 'No pending loss reports' : 'No loss reports found'}</div>
               <div style={styles.emptySub}>
                 {tab === 'pending' ? 'All losses have been resolved' : 'Loss reports will appear here when books are flagged'}
@@ -494,7 +500,10 @@ export default function Losses() {
 
           {/* ── SEARCH BAR ───────────────────────────── */}
           <Card>
-            <div style={styles.searchTitle}>🔍 Search by Admission Number</div>
+            <div style={{ ...styles.searchTitle, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="search" size={16} />
+              Search by Admission Number
+            </div>
             <p style={styles.searchHint}>
               Enter the student's admission number and press Search or hit Enter.
             </p>
@@ -552,7 +561,7 @@ export default function Losses() {
                   }}
                   onClick={() => handleDownloadReport(studentLosses, `Loss Report — ${searchedStudent.fullName}`)}
                 >
-                  ⬇️ Download Report
+                  <Icon name="download" size={16} /> Download Report
                 </Button>
               )}
             </div>
@@ -563,7 +572,9 @@ export default function Losses() {
             studentLosses.length === 0 ? (
               <Card>
                 <div style={styles.emptyState}>
-                  <div style={styles.emptyIcon}>✅</div>
+                  <div style={styles.emptyIcon}>
+                    <Icon name="check-circle" size={40} color={tokens.colors.textMuted} />
+                  </div>
                   <div style={styles.emptyTitle}>No loss records</div>
                   <div style={styles.emptySub}>{searchedStudent.fullName} has no loss reports</div>
                 </div>
@@ -609,7 +620,9 @@ export default function Losses() {
           {/* ── INITIAL EMPTY STATE ──────────────────── */}
           {!searchedStudent && !searchError && (
             <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>🔍</div>
+              <div style={styles.emptyIcon}>
+                <Icon name="search" size={40} color={tokens.colors.textMuted} />
+              </div>
               <div style={styles.emptyTitle}>Enter an admission number above</div>
               <div style={styles.emptySub}>
                 Type the student's admission number and click Search to view their loss history
@@ -625,7 +638,10 @@ export default function Losses() {
         <Modal title="Resolve Loss Report" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.lossModalSummary}>
-            <div style={styles.lossModalBook}>📚 {selectedLoss?.bookCopy?.bookDetails?.titleName}</div>
+            <div style={{ ...styles.lossModalBook, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="book" size={14} />
+              {selectedLoss?.bookCopy?.bookDetails?.titleName}
+            </div>
             <div style={styles.lossModalStudent}>Student: {selectedLoss?.student?.fullName}</div>
             <div style={styles.lossModalMeta}>
               Source: {selectedLoss?.source}{' • '}Flagged: {selectedLoss?.dateFlagged}
@@ -646,7 +662,7 @@ export default function Losses() {
           <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button variant="success" onClick={handleResolve} disabled={submitting}>
-              {submitting ? 'Resolving…' : '✅ Mark Resolved'}
+              {submitting ? 'Resolving…' : <><Icon name="check-circle" size={16} /> Mark Resolved</>}
             </Button>
           </ModalActions>
         </Modal>
@@ -657,7 +673,10 @@ export default function Losses() {
         <Modal title="Write Off Loss" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.lossModalSummary}>
-            <div style={styles.lossModalBook}>📚 {selectedLoss?.bookCopy?.bookDetails?.titleName}</div>
+            <div style={{ ...styles.lossModalBook, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="book" size={14} />
+              {selectedLoss?.bookCopy?.bookDetails?.titleName}
+            </div>
             <div style={styles.lossModalStudent}>Student: {selectedLoss?.student?.fullName}</div>
           </div>
           <Banner type="warning">
@@ -680,7 +699,7 @@ export default function Losses() {
               disabled={submitting}
               style={{ background: tokens.colors.warning, color: '#fff' }}
             >
-              {submitting ? 'Processing…' : '⚠️ Write Off'}
+              {submitting ? 'Processing…' : <><Icon name="ban" size={16} /> Write Off</>}
             </Button>
           </ModalActions>
         </Modal>
@@ -726,13 +745,13 @@ function LossRow({ loss, index, canResolve, onResolve, onWriteOff }) {
       <td style={styles.td}>
         {isPending && canResolve ? (
           <div style={styles.actionRow}>
-            <Button variant="success" size="sm" onClick={onResolve}>✅ Resolve</Button>
+            <Button variant="success" size="sm" onClick={onResolve}><Icon name="check-circle" size={14} /> Resolve</Button>
             <Button
               size="sm"
               onClick={onWriteOff}
               style={{ background: tokens.colors.warningLight, color: tokens.colors.warning, border: `1.5px solid ${tokens.colors.warningBorder}` }}
             >
-              ⚠️ Write Off
+              <Icon name="ban" size={14} /> Write Off
             </Button>
           </div>
         ) : isPending ? (
@@ -769,12 +788,12 @@ function LossCard({ loss, canResolve, onResolve, onWriteOff }) {
 
       {isPending && canResolve ? (
         <div style={styles.lossCardActions}>
-          <Button variant="success" style={{ flex: 1 }} onClick={onResolve}>✅ Resolve</Button>
+          <Button variant="success" style={{ flex: 1 }} onClick={onResolve}><Icon name="check-circle" size={14} /> Resolve</Button>
           <Button
             style={{ flex: 1, background: tokens.colors.warningLight, color: tokens.colors.warning, border: `1.5px solid ${tokens.colors.warningBorder}` }}
             onClick={onWriteOff}
           >
-            ⚠️ Write Off
+            <Icon name="ban" size={14} /> Write Off
           </Button>
         </div>
       ) : isPending ? (

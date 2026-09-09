@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { tokens, getStatusColor } from '../styles/tokens';
 import useScreenSize from '../hooks/useScreenSize';
+import Icon from './Icon';
 
 // ── SHARED UI COMPONENTS ─────────────────────────────────────────────
 // Reusable building blocks used across every page — Modal, FormField,
@@ -30,7 +31,7 @@ export function Modal({ title, onClose, children, maxWidth = 480 }) {
             onMouseLeave={e => e.currentTarget.style.background = isDesktop ? 'transparent' : tokens.colors.surface}
             aria-label="Close"
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
         <div style={isDesktop ? modalStyles.body : modalStyles.bodyFull}>{children}</div>
@@ -413,10 +414,10 @@ export function PageHeader({ title, subtitle, actions }) {
 // ── BANNER (success / error inline messages) ─────────────────────────
 export function Banner({ type = 'success', children }) {
   const map = {
-    success: { bg: tokens.colors.successLight, border: tokens.colors.successBorder, color: tokens.colors.success, icon: '✅' },
-    error: { bg: tokens.colors.dangerLight, border: tokens.colors.dangerBorder, color: tokens.colors.danger, icon: '⚠️' },
-    info: { bg: tokens.colors.infoLight, border: tokens.colors.infoBorder, color: tokens.colors.info, icon: 'ℹ️' },
-    warning: { bg: tokens.colors.warningLight, border: tokens.colors.warningBorder, color: tokens.colors.warning, icon: '⚠️' },
+    success: { bg: tokens.colors.successLight, border: tokens.colors.successBorder, color: tokens.colors.success, icon: 'check-circle' },
+    error: { bg: tokens.colors.dangerLight, border: tokens.colors.dangerBorder, color: tokens.colors.danger, icon: 'alert-circle' },
+    info: { bg: tokens.colors.infoLight, border: tokens.colors.infoBorder, color: tokens.colors.info, icon: 'info' },
+    warning: { bg: tokens.colors.warningLight, border: tokens.colors.warningBorder, color: tokens.colors.warning, icon: 'alert-triangle' },
   };
   const c = map[type];
   return (
@@ -426,21 +427,23 @@ export function Banner({ type = 'success', children }) {
       color: c.color, fontSize: 13, marginBottom: tokens.spacing.md,
       display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.5,
     }}>
-      <span>{c.icon}</span>
+      <Icon name={c.icon} size={18} color={c.color} />
       <span>{children}</span>
     </div>
   );
 }
 
 // ── EMPTY STATE ───────────────────────────────────────────────────────
-export function EmptyState({ icon = '📭', title, subtitle, action }) {
+export function EmptyState({ icon = 'inbox', title, subtitle, action }) {
   return (
     <div style={{
       background: tokens.colors.card, borderRadius: tokens.radius.lg,
       padding: 60, textAlign: 'center',
       boxShadow: tokens.shadows.sm, border: `1px solid ${tokens.colors.border}`,
     }}>
-      <div style={{ fontSize: 44, marginBottom: 12 }}>{icon}</div>
+      <div style={{ marginBottom: 12 }}>
+        <Icon name={icon} size={40} color={tokens.colors.textMuted} />
+      </div>
       <div style={{
         fontSize: 17, fontWeight: 700,
         color: tokens.colors.textPrimary, marginBottom: 6,
@@ -464,7 +467,7 @@ export function EmptyState({ icon = '📭', title, subtitle, action }) {
 export function NoStreamAssigned() {
   return (
     <EmptyState
-      icon="🏫"
+      icon="layers"
       title="You have not been assigned to a stream yet"
       subtitle="Contact your librarian to be assigned to a stream."
     />

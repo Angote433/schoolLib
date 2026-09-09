@@ -9,6 +9,7 @@ import { tokens } from '../styles/tokens';
 import {
   Button, Input, Banner, StatusBadge, Tabs, Card, Avatar,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 const MODES = {
@@ -166,7 +167,7 @@ export default function Borrows() {
         dateDue: dueDate,
         librarianId: user.userId,
       });
-      showSuccess(`✅ "${scannedBook.bookDetails?.titleName}" issued to ${selectedStudent.fullName}. Due: ${dueDate}`);
+      showSuccess(`"${scannedBook.bookDetails?.titleName}" issued to ${selectedStudent.fullName}. Due: ${dueDate}`);
       resetState();
       setTimeout(() => {
         if (scanInputRef.current) scanInputRef.current.focus();
@@ -186,7 +187,7 @@ export default function Borrows() {
 
     try {
       await borrowService.returnBook(scannedBook.qrCode);
-      showSuccess(`✅ "${scannedBook.bookDetails?.titleName}" returned successfully`);
+      showSuccess(`"${scannedBook.bookDetails?.titleName}" returned successfully`);
       resetState();
       setTimeout(() => {
         if (scanInputRef.current) scanInputRef.current.focus();
@@ -273,10 +274,10 @@ export default function Borrows() {
         active={mode}
         onChange={setMode}
         items={[
-          { key: MODES.ISSUE, icon: '📖', label: 'Issue Book' },
-          { key: MODES.RETURN, icon: '↩️', label: 'Return Book' },
-          { key: MODES.ACTIVE, icon: '📋', label: 'Active Borrows' },
-          { key: MODES.OVERDUE, icon: '🔴', label: 'Overdue' },
+          { key: MODES.ISSUE, icon: <Icon name="book-open" size={16} />, label: 'Issue Book' },
+          { key: MODES.RETURN, icon: <Icon name="arrow-left-right" size={16} />, label: 'Return Book' },
+          { key: MODES.ACTIVE, icon: <Icon name="clipboard-list" size={16} />, label: 'Active Borrows' },
+          { key: MODES.OVERDUE, icon: <Icon name="clock" size={16} />, label: 'Overdue' },
         ]}
       />
 
@@ -284,7 +285,10 @@ export default function Borrows() {
       {mode === MODES.ACTIVE && (
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: tokens.spacing.lg }}>
           <div style={styles.listCardHeader}>
-            <span>📋 Currently Borrowed Books</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="clipboard-list" size={16} />
+              Currently Borrowed Books
+            </span>
             <span style={styles.countBadge}>{activeBorrows.length} out</span>
           </div>
           {loadingList ? (
@@ -374,7 +378,10 @@ export default function Borrows() {
       {mode === MODES.OVERDUE && (
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: tokens.spacing.lg }}>
           <div style={styles.listCardHeader}>
-            <span>🔴 Overdue Borrows</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="clock" size={16} />
+              Overdue Borrows
+            </span>
             <span style={{ ...styles.countBadge, background: tokens.colors.danger }}>{overdueBorrows.length} overdue</span>
           </div>
 
@@ -390,7 +397,10 @@ export default function Borrows() {
           {loadingList ? (
             <div style={styles.loadingText}>Loading…</div>
           ) : overdueBorrows.length === 0 ? (
-            <div style={styles.emptyList}>🎉 No overdue borrows — all books returned on time</div>
+            <div style={{ ...styles.emptyList, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <Icon name="check-circle" size={28} color={tokens.colors.textMuted} />
+              No overdue borrows — all books returned on time
+            </div>
           ) : isMobile ? (
             <div style={styles.cardList}>
               {overdueBorrows.map((record, i) => (
@@ -409,7 +419,7 @@ export default function Borrows() {
                     <StatusBadge status="OVERDUE" label={`${daysOverdue(record.dateDue)} days`} />
                   </div>
                   <Button variant="danger" style={{ width: '100%' }} onClick={() => handleFlagLost(record)}>
-                    ⚠️ Flag as Lost
+                    <Icon name="alert-triangle" size={14} /> Flag as Lost
                   </Button>
                 </div>
               ))}
@@ -446,7 +456,7 @@ export default function Borrows() {
                       <td style={styles.td}><StatusBadge status="OVERDUE" label={`${daysOverdue(record.dateDue)} days`} /></td>
                       <td style={styles.td}>
                         <Button variant="danger" size="sm" onClick={() => handleFlagLost(record)}>
-                          ⚠️ Flag as Lost
+                          <Icon name="alert-triangle" size={14} /> Flag as Lost
                         </Button>
                       </td>
                     </tr>
@@ -465,8 +475,9 @@ export default function Borrows() {
           {/* Left — scan panel */}
           <div style={{ ...styles.leftPanel, ...(isMobile ? { flex: '1 1 auto', width: '100%' } : {}) }}>
             <Card>
-              <div style={styles.scanLabel}>
-                {mode === MODES.ISSUE ? '📖 Scan book to issue' : '↩️ Scan book to return'}
+              <div style={{ ...styles.scanLabel, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name={mode === MODES.ISSUE ? 'book-open' : 'arrow-left-right'} size={17} />
+                {mode === MODES.ISSUE ? 'Scan book to issue' : 'Scan book to return'}
               </div>
               <div style={styles.scanHint}>
                 Connect USB scanner and click below, then scan the barcode. Or type manually.
@@ -489,15 +500,28 @@ export default function Borrows() {
                   Look Up
                 </Button>
               </div>
-              <div style={styles.scanTip}>💡 USB scanner auto-presses Enter after scanning</div>
-              {scanLoading && <div style={styles.scanLoadingMsg}>🔍 Looking up book…</div>}
-              {scanError && <div style={styles.scanErrorMsg}>❌ {scanError}</div>}
+              <div style={{ ...styles.scanTip, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="info" size={14} /> USB scanner auto-presses Enter after scanning
+              </div>
+              {scanLoading && (
+                <div style={{ ...styles.scanLoadingMsg, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name="search" size={14} /> Looking up book…
+                </div>
+              )}
+              {scanError && (
+                <div style={{ ...styles.scanErrorMsg, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name="alert-circle" size={14} /> {scanError}
+                </div>
+              )}
             </Card>
 
             {/* Book info card */}
             {scannedBook && !scanError && (
               <Card style={{ borderLeft: `5px solid ${scannedBook.status === 'AVAILABLE' ? tokens.colors.success : tokens.colors.info}` }}>
-                <div style={styles.bookInfoHeader}>📚 Book Found</div>
+                <div style={{ ...styles.bookInfoHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="book" size={16} />
+                  Book Found
+                </div>
                 {[
                   ['Title', scannedBook.bookDetails?.titleName],
                   ['Subject', scannedBook.bookDetails?.subject],
@@ -529,8 +553,8 @@ export default function Borrows() {
                       {activeBorrow.student?.admissionNumber}
                       {' • '}Due: {activeBorrow.dateDue}
                       {new Date(activeBorrow.dateDue) < new Date() && (
-                        <span style={{ color: tokens.colors.danger }}>
-                          {' '}⚠️ {daysOverdue(activeBorrow.dateDue)} days overdue
+                        <span style={{ color: tokens.colors.danger, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Icon name="alert-triangle" size={12} /> {daysOverdue(activeBorrow.dateDue)} days overdue
                         </span>
                       )}
                     </div>
@@ -568,7 +592,7 @@ export default function Borrows() {
                       onClick={handleReturn}
                       disabled={!canReturn || submitting}
                     >
-                      {submitting ? 'Processing…' : '↩️ Confirm Return'}
+                      {submitting ? 'Processing…' : <><Icon name="arrow-left-right" size={16} /> Confirm Return</>}
                     </Button>
                   )}
                   <Button variant="secondary" style={{ width: '100%' }} onClick={resetState}>
@@ -582,7 +606,10 @@ export default function Borrows() {
           {/* Right — student select (issue only) */}
           {mode === MODES.ISSUE && (
             <Card style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
-              <div style={styles.studentPanelHeader}>🎓 Select Student</div>
+              <div style={{ ...styles.studentPanelHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="students" size={16} />
+                Select Student
+              </div>
               <div style={styles.studentSearch}>
                 <label style={styles.fieldLabel}>Search Student</label>
                 <Input
@@ -617,7 +644,7 @@ export default function Borrows() {
                           {student.stream?.streamName ? ` • ${student.stream.streamName}` : ''}
                         </div>
                       </div>
-                      {selectedStudent?.studentId === student.studentId && <span style={styles.studentCheck}>✓</span>}
+                      {selectedStudent?.studentId === student.studentId && <Icon name="check" size={16} color={tokens.colors.success} />}
                     </div>
                   ))
                 )}
@@ -628,7 +655,10 @@ export default function Borrows() {
           {/* Right — recent activity (return mode) */}
           {mode === MODES.RETURN && (
             <Card style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
-              <div style={styles.studentPanelHeader}>ℹ️ How to Return</div>
+              <div style={{ ...styles.studentPanelHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="info" size={16} />
+                How to Return
+              </div>
               <div style={{ padding: 20 }}>
                 <div style={styles.instructionStep}>
                   <span style={styles.stepNumber}>1</span>

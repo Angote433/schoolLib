@@ -10,6 +10,7 @@ import {
   Modal, FormField, Input, Select, Button, Banner, EmptyState,
   Card, StatusBadge, Avatar, ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 export default function Students() {
@@ -462,16 +463,16 @@ export default function Students() {
 
       {/* ── MAIN CONTENT AREA ────────────────────────── */}
       {!isTeacher && !selectedClassId ? (
-        <EmptyState icon="🎓" title="Select a class to begin" subtitle="Choose a class from the dropdown above to view its streams" />
+        <EmptyState icon="students" title="Select a class to begin" subtitle="Choose a class from the dropdown above to view its streams" />
       ) : !selectedStreamId ? (
         isTeacher
           ? <div style={styles.loadingText}>Loading your stream…</div>
-          : <EmptyState icon="🏫" title="Select a stream" subtitle="Choose a stream to view its students" />
+          : <EmptyState icon="layers" title="Select a stream" subtitle="Choose a stream to view its students" />
       ) : loadingStudents ? (
         <div style={styles.loadingText}>Loading students…</div>
       ) : filteredStudents.length === 0 ? (
         <EmptyState
-          icon="👤"
+          icon="students"
           title={searchText ? 'No students match your search' : 'No students in this stream'}
           subtitle={!searchText && 'Click "+ Add Student" to add the first student'}
         />
@@ -666,8 +667,9 @@ export default function Students() {
               </div>
             </div>
 
-            <div style={styles.profileNote}>
-              📌 Full book history and loss reports will be visible here in a future update.
+            <div style={{ ...styles.profileNote, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              <Icon name="info" size={14} />
+              Full book history and loss reports will be visible here in a future update.
             </div>
           </div>
 
@@ -682,7 +684,9 @@ export default function Students() {
         <Modal title="Deactivate Student" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+              <Icon name="alert-triangle" size={40} color={tokens.colors.warning} />
+            </div>
             <p style={styles.confirmText}>
               Deactivate <strong>{selectedStudent?.fullName}</strong>?
             </p>
@@ -706,7 +710,9 @@ export default function Students() {
         <Modal title="Activate Student" onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
           <div style={styles.confirmContent}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+              <Icon name="check-circle" size={40} color={tokens.colors.success} />
+            </div>
             <p style={styles.confirmText}>
               Activate <strong>{selectedStudent?.fullName}</strong>?
             </p>

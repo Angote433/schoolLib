@@ -5,6 +5,7 @@ import {
   Modal, FormField, Input, Select, Textarea, Button, Banner, EmptyState,
   Card, StatusBadge, ModalActions,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 // Copy registration modes — see FEATURE_BATCH_2_PROMPT.md Feature 1.
@@ -24,7 +25,7 @@ const DEFAULT_COPIES_FORM = {
 };
 
 const PREVIEW_STATUS_LABEL = {
-  OK: '✓ OK',
+  OK: 'OK',
   DUPLICATE_IN_DB: 'Already used',
   DUPLICATE_IN_BATCH: 'Duplicated in this list',
   BLANK: 'Blank',
@@ -323,7 +324,7 @@ export default function Books() {
       <div style={styles.filterBar}>
         <Input
           style={{ flex: 1, minWidth: 220 }}
-          placeholder="🔍  Search by title or subject..."
+          placeholder="Search by title or subject..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
@@ -338,7 +339,7 @@ export default function Books() {
         <div style={styles.loadingText}>Loading books…</div>
       ) : filteredBooks.length === 0 ? (
         <EmptyState
-          icon="📚"
+          icon="book"
           title={searchText || gradeFilter ? 'No books match your search' : 'No books registered yet'}
           subtitle={!searchText && !gradeFilter && 'Click "Register Book Title" to add the first book'}
         />
@@ -436,15 +437,16 @@ export default function Books() {
         ...(isMobile ? { padding: '12px 16px', flexWrap: 'wrap', gap: 10 } : {}),
         transform: selectedForPrint.size > 0 ? 'translateY(0)' : 'translateY(100%)',
       }}>
-        <span style={styles.stickyPrintCount}>
-          🏷️ {selectedForPrint.size} {selectedForPrint.size === 1 ? 'copy' : 'copies'} selected
+        <span style={{ ...styles.stickyPrintCount, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="tag" size={16} />
+          {selectedForPrint.size} {selectedForPrint.size === 1 ? 'copy' : 'copies'} selected
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
           <Button variant="secondary" size="sm" onClick={clearSelection} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.25)' }}>
             Clear
           </Button>
           <Button variant="accent" onClick={handlePrint}>
-            🖨️ Print Barcodes
+            <Icon name="printer" size={16} /> Print Barcodes
           </Button>
         </div>
       </div>
@@ -618,7 +620,7 @@ export default function Books() {
               type="button" variant="secondary" onClick={handlePreviewCopies}
               disabled={previewing} style={{ marginBottom: 16 }}
             >
-              {previewing ? 'Previewing…' : '👁️ Preview'}
+              {previewing ? 'Previewing…' : <><Icon name="eye" size={16} /> Preview</>}
             </Button>
 
             {preview && (
@@ -637,7 +639,8 @@ export default function Books() {
                       style={{ ...styles.previewRow, ...(entry.status !== 'OK' ? styles.previewRowConflict : {}) }}
                     >
                       <span style={styles.previewNumber}>{entry.accessionNumber || '(blank)'}</span>
-                      <span style={styles.previewStatus}>
+                      <span style={{ ...styles.previewStatus, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {entry.status === 'OK' && <Icon name="check" size={13} color={tokens.colors.success} />}
                         {entry.status === 'DUPLICATE_IN_DB' && entry.conflictTitle
                           ? `Already used by "${entry.conflictTitle}"`
                           : PREVIEW_STATUS_LABEL[entry.status] || entry.status}
@@ -684,7 +687,7 @@ export default function Books() {
 
           {isMobile && (
             <Banner type="info">
-              🖨️ Printing sticker sheets is best done from a desktop or laptop browser connected to your printer.
+              Printing sticker sheets is best done from a desktop or laptop browser connected to your printer.
             </Banner>
           )}
 
@@ -715,7 +718,7 @@ export default function Books() {
 
           <ModalActions>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-            <Button variant="accent" onClick={triggerPrint}>🖨️ Print Now</Button>
+            <Button variant="accent" onClick={triggerPrint}><Icon name="printer" size={16} /> Print Now</Button>
           </ModalActions>
         </Modal>
       )}
@@ -764,7 +767,7 @@ function CopyCard({ copy, isSelected, onToggleSelect }) {
           background: isSelected ? tokens.colors.primary : '#fff',
           border: isSelected ? `2px solid ${tokens.colors.primary}` : `2px solid ${tokens.colors.border}`,
         }}>
-          {isSelected && <span style={{ color: '#fff', fontSize: 11 }}>✓</span>}
+          {isSelected && <Icon name="check" size={12} color="#fff" />}
         </div>
         <StatusBadge status={copy.status} />
       </div>

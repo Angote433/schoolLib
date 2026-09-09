@@ -6,6 +6,7 @@ import { tokens } from '../styles/tokens';
 import {
   FormField, Input, Button, Banner, Card,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -225,7 +226,7 @@ function PasswordField({ value, onChange, show, onToggleShow, required }) {
         aria-label={show ? 'Hide password' : 'Show password'}
         tabIndex={-1}
       >
-        {show ? '🙈' : '👁️'}
+        <Icon name={show ? 'eye-off' : 'eye'} size={16} />
       </button>
     </div>
   );

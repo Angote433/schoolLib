@@ -10,6 +10,7 @@ import {
   Modal, Button, Input, Banner, StatusBadge, Tabs,
   Card, Avatar, ModalActions, NoStreamAssigned,
 } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 // The four modes of this page
@@ -263,7 +264,7 @@ export default function Distributions() {
         teacherId: user.userId,
       });
 
-      showSuccess(`✅ "${scannedBook.bookDetails?.titleName}" assigned to ${selectedStudent.fullName}`);
+      showSuccess(`"${scannedBook.bookDetails?.titleName}" assigned to ${selectedStudent.fullName}`);
       resetScanState();
       loadRecentActivity();
 
@@ -288,7 +289,7 @@ export default function Distributions() {
     try {
       await distributionService.returnBook(scannedBook.qrCode);
 
-      showSuccess(`✅ "${scannedBook.bookDetails?.titleName}" returned successfully`);
+      showSuccess(`"${scannedBook.bookDetails?.titleName}" returned successfully`);
       resetScanState();
       loadRecentActivity();
 
@@ -311,7 +312,7 @@ export default function Distributions() {
     try {
       await distributionService.returnBook(record.bookCopy?.qrCode);
 
-      showSuccess(`✅ Book returned by ${record.student?.fullName}`);
+      showSuccess(`Book returned by ${record.student?.fullName}`);
       setReturnCandidates(prev => prev.filter(r => r.bookCopy?.bookId !== record.bookCopy?.bookId));
       loadRecentActivity();
     } catch (err) {
@@ -373,10 +374,10 @@ export default function Distributions() {
         active={mode}
         onChange={setMode}
         items={[
-          { key: MODES.ASSIGN, icon: '📦', label: 'Assign Book' },
-          { key: MODES.RETURN, icon: '↩️', label: 'Return Book' },
-          { key: MODES.ACTIVE, icon: '📋', label: 'View Active' },
-          { key: MODES.UNRETURNED, icon: '🔍', label: 'Find Unreturned' },
+          { key: MODES.ASSIGN, icon: <Icon name="package" size={16} />, label: 'Assign Book' },
+          { key: MODES.RETURN, icon: <Icon name="arrow-left-right" size={16} />, label: 'Return Book' },
+          { key: MODES.ACTIVE, icon: <Icon name="clipboard-list" size={16} />, label: 'View Active' },
+          { key: MODES.UNRETURNED, icon: <Icon name="search" size={16} />, label: 'Find Unreturned' },
         ]}
       />
 
@@ -384,7 +385,10 @@ export default function Distributions() {
       {mode === MODES.ACTIVE && (
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: tokens.spacing.lg }}>
           <div style={styles.listCardHeader}>
-            <span>📋 Currently Distributed Books</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="clipboard-list" size={16} />
+              Currently Distributed Books
+            </span>
             <span style={styles.countBadge}>{activeDistributions.length} books out</span>
           </div>
 
@@ -433,7 +437,10 @@ export default function Distributions() {
       {mode === MODES.UNRETURNED && (
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: tokens.spacing.lg }}>
           <div style={styles.listCardHeader}>
-            <span>🔍 Unreturned Books — End of Term Audit</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="search" size={16} />
+              Unreturned Books — End of Term Audit
+            </span>
             <span style={styles.countBadge}>{activeDistributions.length} unreturned</span>
           </div>
 
@@ -446,7 +453,10 @@ export default function Distributions() {
           {loadingActive ? (
             <div style={styles.loadingText}>Loading unreturned books…</div>
           ) : activeDistributions.length === 0 ? (
-            <div style={styles.emptyList}>🎉 All books have been returned</div>
+            <div style={{ ...styles.emptyList, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <Icon name="check-circle" size={28} color={tokens.colors.textMuted} />
+              All books have been returned
+            </div>
           ) : (
             <div style={styles.tableWrapper}>
               <table style={styles.table}>
@@ -478,7 +488,7 @@ export default function Distributions() {
                       <td style={styles.td}>{record.dateDistributed}</td>
                       <td style={styles.td}>
                         <Button variant="danger" size="sm" onClick={() => handleFlagLost(record)}>
-                          ⚠️ Flag as Lost
+                          <Icon name="alert-triangle" size={14} /> Flag as Lost
                         </Button>
                       </td>
                     </tr>
@@ -498,8 +508,9 @@ export default function Distributions() {
         <div style={{ ...styles.leftPanel, ...(isMobile ? { flex: '1 1 auto', width: '100%' } : {}) }}>
 
           <Card>
-            <div style={styles.scanLabel}>
-              {mode === MODES.ASSIGN ? '📦 Enter accession number to assign' : '↩️ Scan ISBN barcode to return'}
+            <div style={{ ...styles.scanLabel, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name={mode === MODES.ASSIGN ? 'package' : 'arrow-left-right'} size={17} />
+              {mode === MODES.ASSIGN ? 'Enter accession number to assign' : 'Scan ISBN barcode to return'}
             </div>
 
             <div style={styles.scanHint}>
@@ -509,7 +520,7 @@ export default function Distributions() {
             </div>
 
             <div style={styles.scanInputWrap}>
-              <span style={styles.scanInputIcon}>🔎</span>
+              <Icon name="scan" size={16} color={tokens.colors.textMuted} style={styles.scanInputIcon} />
               <Input
                 ref={scanInputRef}
                 style={{ ...styles.scanInput, ...(isMobile ? { fontSize: 16, height: 52 } : {}) }}
@@ -532,18 +543,30 @@ export default function Distributions() {
               </Button>
             </div>
 
-            <div style={styles.scanTip}>
-              💡 Tip: USB scanner auto-presses Enter after scanning — no need to click anything
+            <div style={{ ...styles.scanTip, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <Icon name="info" size={14} />
+              Tip: USB scanner auto-presses Enter after scanning — no need to click anything
             </div>
 
-            {scanLoading && <div style={styles.scanLoadingMsg}>🔍 Looking up book…</div>}
-            {scanError && <div style={styles.scanErrorMsg}>❌ {scanError}</div>}
+            {scanLoading && (
+              <div style={{ ...styles.scanLoadingMsg, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="search" size={14} /> Looking up book…
+              </div>
+            )}
+            {scanError && (
+              <div style={{ ...styles.scanErrorMsg, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="alert-circle" size={14} /> {scanError}
+              </div>
+            )}
           </Card>
 
           {/* ── SCANNED BOOK INFO ──────────────────── */}
           {scannedBook && !scanError && (
             <Card style={{ borderLeft: `5px solid ${bookBorderColor}` }}>
-              <div style={styles.bookInfoHeader}>📚 Book Found</div>
+              <div style={{ ...styles.bookInfoHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="book" size={16} />
+                Book Found
+              </div>
 
               <div style={styles.bookInfoRow}>
                 <span style={styles.bookInfoLabel}>Title</span>
@@ -612,7 +635,7 @@ export default function Distributions() {
                           onClick={() => handleReturnByRecord(record)}
                           disabled={submitting}
                         >
-                          ✓ Return
+                          <Icon name="check" size={14} /> Return
                         </Button>
                       </div>
                     ))
@@ -640,7 +663,7 @@ export default function Distributions() {
                     onClick={handleReturn}
                     disabled={!canReturn || submitting}
                   >
-                    {submitting ? 'Processing…' : '↩️ Confirm Return'}
+                    {submitting ? 'Processing…' : <><Icon name="arrow-left-right" size={16} /> Confirm Return</>}
                   </Button>
                 )}
 
@@ -657,7 +680,10 @@ export default function Distributions() {
         {/* ── RIGHT PANEL — student search (assign only) */}
         {mode === MODES.ASSIGN && (
           <Card style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
-            <div style={styles.studentPanelHeader}>🎓 Select Student</div>
+            <div style={{ ...styles.studentPanelHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="students" size={16} />
+              Select Student
+            </div>
 
             <div style={styles.studentSearch}>
               <label style={styles.fieldLabel}>Search Student</label>
@@ -694,7 +720,7 @@ export default function Distributions() {
                         {student.stream?.streamName ? ` • ${student.stream.streamName}` : ''}
                       </div>
                     </div>
-                    {selectedStudent === student && <span style={styles.studentCheck}>✓</span>}
+                    {selectedStudent === student && <Icon name="check" size={16} color={tokens.colors.success} />}
                   </div>
                 ))
               )}
@@ -705,7 +731,10 @@ export default function Distributions() {
         {/* ── RIGHT PANEL — recent activity ────────── */}
         {mode !== MODES.ASSIGN && (
           <Card style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
-            <div style={styles.studentPanelHeader}>🕐 Recent Activity</div>
+            <div style={{ ...styles.studentPanelHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="clock" size={16} />
+              Recent Activity
+            </div>
             <div style={styles.activityList}>
               {recentActivity.length === 0 ? (
                 <div style={styles.studentListEmpty}>No recent activity</div>
@@ -728,7 +757,15 @@ export default function Distributions() {
 
       {/* ── CONFIRMATION MODAL FOR FLAG LOST ──────────── */}
       {confirmModal && (
-        <Modal title="⚠️ Flag Book as Lost?" onClose={cancelFlagLost} maxWidth={480}>
+        <Modal
+          title={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="alert-triangle" size={18} color={tokens.colors.warning} />
+              Flag Book as Lost?
+            </span>
+          }
+          onClose={cancelFlagLost} maxWidth={480}
+        >
           <div style={styles.modalSection}>
             <label style={styles.modalLabel}>Book Title</label>
             <div style={styles.modalValue}>{confirmModal.bookCopy?.bookDetails?.titleName}</div>
@@ -759,7 +796,7 @@ export default function Distributions() {
           <ModalActions>
             <Button variant="secondary" onClick={cancelFlagLost} disabled={submitting}>Cancel</Button>
             <Button variant="danger" onClick={confirmFlagLost} disabled={submitting}>
-              {submitting ? 'Processing…' : '⚠️ Flag as Lost'}
+              {submitting ? 'Processing…' : <><Icon name="alert-triangle" size={16} /> Flag as Lost</>}
             </Button>
           </ModalActions>
         </Modal>

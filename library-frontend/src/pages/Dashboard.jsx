@@ -11,13 +11,14 @@ import {
 } from '../services/libraryApi';
 import { tokens } from '../styles/tokens';
 import { Card, Avatar, StatusBadge, Button, NoStreamAssigned } from '../components/SharedComponents';
+import Icon from '../components/Icon';
 import useScreenSize from '../hooks/useScreenSize';
 
 function timeOfDayGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return { text: 'Good morning', icon: '☀️' };
-  if (hour < 17) return { text: 'Good afternoon', icon: '🌤️' };
-  return { text: 'Good evening', icon: '🌙' };
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 export default function Dashboard() {
@@ -126,8 +127,7 @@ function LibrarianDashboard({ user }) {
         <div style={styles.heroDecor} />
         <div style={styles.heroLeft}>
           <div style={styles.heroGreeting}>
-            <span style={{ fontSize: 22 }}>{greeting.icon}</span>
-            {greeting.text}, {user?.fullName?.split(' ')[0]}
+            {greeting}, {user?.fullName?.split(' ')[0]}
           </div>
           <p style={styles.heroSub}>
             Here's what's happening in the library today.
@@ -139,7 +139,7 @@ function LibrarianDashboard({ user }) {
             onClick={() => navigate('/distributions')}
             style={styles.heroBtn}
           >
-            📷 Scan Book
+            <Icon name="scan" size={16} /> Scan Book
           </Button>
           <Button
             variant="secondary"
@@ -155,7 +155,7 @@ function LibrarianDashboard({ user }) {
       <div style={{ ...styles.statsGrid, ...(isMobile ? { gridTemplateColumns: 'repeat(2, 1fr)' } : {}) }}>
 
         <StatCard
-          icon="📚"
+          icon="book"
           label="Book Titles"
           value={stats.totalBooks}
           color={tokens.colors.primary}
@@ -163,7 +163,7 @@ function LibrarianDashboard({ user }) {
         />
 
         <StatCard
-          icon="🏫"
+          icon="layers"
           label="Active Streams"
           value={stats.totalStreams}
           color={tokens.colors.accent}
@@ -171,7 +171,7 @@ function LibrarianDashboard({ user }) {
         />
 
         <StatCard
-          icon="📖"
+          icon="book-open"
           label="Active Borrows"
           value={stats.activeBorrows}
           color={tokens.colors.info}
@@ -179,7 +179,7 @@ function LibrarianDashboard({ user }) {
         />
 
         <StatCard
-          icon="⚠️"
+          icon="alert-triangle"
           label="Pending Losses"
           value={stats.pendingLosses}
           color={tokens.colors.warning}
@@ -187,7 +187,7 @@ function LibrarianDashboard({ user }) {
         />
 
         <StatCard
-          icon="🔴"
+          icon="clock"
           label="Overdue Borrows"
           value={stats.overdueBorrows}
           color={tokens.colors.danger}
@@ -202,12 +202,18 @@ function LibrarianDashboard({ user }) {
         {/* Pending Loss Reports */}
         <Card style={styles.listCard}>
           <div style={styles.listHeader}>
-            <span style={styles.listTitle}>⚠️ Pending Loss Reports</span>
+            <span style={{ ...styles.listTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="alert-triangle" size={16} color={tokens.colors.warning} />
+              Pending Loss Reports
+            </span>
             <span style={styles.listCount}>{stats.pendingLosses} total</span>
           </div>
 
           {pendingLosses.length === 0 ? (
-            <div style={styles.emptyState}>🎉 No pending losses</div>
+            <div style={{ ...styles.emptyState, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <Icon name="check-circle" size={22} color={tokens.colors.textMuted} />
+              No pending losses
+            </div>
           ) : (
             <>
               {pendingLosses.map((report, index) => (
@@ -243,12 +249,18 @@ function LibrarianDashboard({ user }) {
         {/* Overdue Borrows */}
         <Card style={styles.listCard}>
           <div style={styles.listHeader}>
-            <span style={styles.listTitle}>🔴 Overdue Borrows</span>
+            <span style={{ ...styles.listTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="clock" size={16} color={tokens.colors.danger} />
+              Overdue Borrows
+            </span>
             <span style={styles.listCount}>{stats.overdueBorrows} total</span>
           </div>
 
           {overdueBorrows.length === 0 ? (
-            <div style={styles.emptyState}>🎉 No overdue borrows</div>
+            <div style={{ ...styles.emptyState, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <Icon name="check-circle" size={22} color={tokens.colors.textMuted} />
+              No overdue borrows
+            </div>
           ) : (
             <>
               {overdueBorrows.map((record, index) => (
@@ -347,8 +359,7 @@ function TeacherDashboard({ user }) {
           <div style={styles.heroDecor} />
           <div style={styles.heroLeft}>
             <div style={styles.heroGreeting}>
-              <span style={{ fontSize: 22 }}>{greeting.icon}</span>
-              {greeting.text}, {user?.fullName?.split(' ')[0]}
+              {greeting}, {user?.fullName?.split(' ')[0]}
             </div>
           </div>
         </div>
@@ -382,8 +393,7 @@ function TeacherDashboard({ user }) {
         <div style={styles.heroDecor} />
         <div style={styles.heroLeft}>
           <div style={styles.heroGreeting}>
-            <span style={{ fontSize: 22 }}>{greeting.icon}</span>
-            {greeting.text}, {user?.fullName?.split(' ')[0]}
+            {greeting}, {user?.fullName?.split(' ')[0]}
           </div>
           <p style={styles.heroSub}>
             Here's what's happening in Stream {myStream?.streamName || user.streamName} today.
@@ -395,14 +405,14 @@ function TeacherDashboard({ user }) {
             onClick={() => navigate('/distributions')}
             style={styles.heroBtn}
           >
-            📦 Assign Book
+            <Icon name="package" size={16} /> Assign Book
           </Button>
           <Button
             variant="secondary"
             onClick={() => navigate('/students')}
             style={{ ...styles.heroBtn, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.25)' }}
           >
-            🎓 My Students
+            <Icon name="students" size={16} /> My Students
           </Button>
         </div>
       </div>
@@ -411,7 +421,7 @@ function TeacherDashboard({ user }) {
       <div style={{ ...styles.statsGrid, ...(isMobile ? { gridTemplateColumns: 'repeat(2, 1fr)' } : {}) }}>
 
         <StatCard
-          icon="🏫"
+          icon="layers"
           label={`Stream ${myStream?.streamName || user.streamName} — Students`}
           value={studentCount}
           color={tokens.colors.accent}
@@ -419,7 +429,7 @@ function TeacherDashboard({ user }) {
         />
 
         <StatCard
-          icon="📦"
+          icon="package"
           label="Books Out"
           value={booksOutCount}
           color={tokens.colors.info}
@@ -427,7 +437,7 @@ function TeacherDashboard({ user }) {
         />
 
         <StatCard
-          icon="⚠️"
+          icon="alert-triangle"
           label="Pending Losses"
           value={pendingLosses.length}
           color={tokens.colors.warning}
@@ -440,12 +450,18 @@ function TeacherDashboard({ user }) {
       <div style={{ ...styles.listsGrid, gridTemplateColumns: '1fr' }}>
         <Card style={styles.listCard}>
           <div style={styles.listHeader}>
-            <span style={styles.listTitle}>⚠️ Pending Loss Reports</span>
+            <span style={{ ...styles.listTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="alert-triangle" size={16} color={tokens.colors.warning} />
+              Pending Loss Reports
+            </span>
             <span style={styles.listCount}>{pendingLosses.length} total</span>
           </div>
 
           {pendingLosses.length === 0 ? (
-            <div style={styles.emptyState}>🎉 No pending losses</div>
+            <div style={{ ...styles.emptyState, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <Icon name="check-circle" size={22} color={tokens.colors.textMuted} />
+              No pending losses
+            </div>
           ) : (
             <>
               {pendingLosses.map((report, index) => (
@@ -487,7 +503,7 @@ function StatCard({ icon, label, value, color, onClick }) {
   return (
     <Card hoverable onClick={onClick} style={styles.statCard}>
       <div style={{ ...styles.statIcon, background: color + '18', color }}>
-        {icon}
+        <Icon name={icon} size={20} color={color} />
       </div>
       <div>
         <div style={styles.statValue}>{value}</div>
