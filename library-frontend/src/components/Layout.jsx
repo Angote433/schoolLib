@@ -10,6 +10,7 @@ import useScreenSize from '../hooks/useScreenSize';
 // path = URL, label = display text, icon = emoji for now
 const NAV_ITEMS = [
   { path: '/dashboard',     label: 'Dashboard',        icon: '📊', section: 'Overview' },
+  { path: '/settings',      label: 'Settings',         icon: '⚙️', section: 'Overview' },
   { path: '/classes',       label: 'Classes & Streams', icon: '🏫', section: 'People' },
   { path: '/users',         label: 'Users',             icon: '👥', section: 'People' },
   { path: '/students',      label: 'Students',          icon: '🎓', section: 'People' },
@@ -32,10 +33,10 @@ const SECTION_LABELS = {
 // Streams and Books (title/copy registration + printing) are librarian
 // management functions the backend already 403s them on, so they're
 // hidden from navigation too rather than showing dead links.
-const TEACHER_VISIBLE_PATHS = ['/dashboard', '/students', '/distributions', '/losses'];
+const TEACHER_VISIBLE_PATHS = ['/dashboard', '/settings', '/students', '/distributions', '/losses'];
 
 export default function Layout({ children }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   // useLocation tells you the current URL
@@ -58,6 +59,15 @@ export default function Layout({ children }) {
     lossService.getPending()
       .then(res => setPendingLossCount(res.data.length))
       .catch(() => setPendingLossCount(0));
+  }, [location.pathname]);
+
+  // Re-pulls the caller's own profile on every navigation so a teacher's
+  // stream reassignment (done by a librarian elsewhere) is picked up
+  // without needing to log out — see Feature 3.4. Runs on first mount
+  // too, which covers "on app load".
+  useEffect(() => {
+    refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   // Close the drawer whenever the route changes — covers nav taps,

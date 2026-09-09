@@ -1,18 +1,18 @@
 package com.arnold.autolibrary.controller;
 
+import com.arnold.autolibrary.dto.CopyPreviewResponse;
+import com.arnold.autolibrary.dto.CopyRegistrationRequest;
 import com.arnold.autolibrary.model.BookCopy;
 import com.arnold.autolibrary.model.BookDetails;
 import com.arnold.autolibrary.services.BookService;
 import com.arnold.autolibrary.util.BarCodeGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -49,14 +49,27 @@ public class BookController {
             return ResponseEntity.ok(bookService.getBooksByGradeLevel(gradeLevel));
     }
 
-    //Register multiple copies of book-each copy getsunique codes generated
+    //Register multiple copies of a book — mode-based: AUTO (generated
+    //sequence, the default), RANGE (a consecutive hand-written range) or
+    //LIST (a pasted, possibly non-sequential list). All-or-nothing —
+    //see BookService.registerCopies.
     @PostMapping("/{id}/copies")
     public ResponseEntity<?>registerCopies(
-            @PathVariable int id, @RequestParam int quantity,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate dateAcquired
+            @PathVariable int id, @RequestBody CopyRegistrationRequest request
             ){
-        List<BookCopy> copies = bookService.registerMultipleCopies(id,quantity,dateAcquired);
+        List<BookCopy> copies = bookService.registerCopies(id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(copies);
+    }
+
+    //Read-only — previews the accession numbers a registration request
+    //would produce, flagging any that already exist or repeat within the
+    //batch, without writing anything to the database.
+    @PostMapping("/{id}/copies/preview")
+    public ResponseEntity<?>previewCopies(
+            @PathVariable int id, @RequestBody CopyRegistrationRequest request
+            ){
+        CopyPreviewResponse preview = bookService.previewCopyRegistration(id, request);
+        return ResponseEntity.ok(preview);
     }
 
 
@@ -73,10 +86,13 @@ public class BookController {
             return ResponseEntity.ok(bookService.getAvailableCopies(bookId));
     }
 
-    //Scan code
-    @GetMapping("/scan/{qrCode}")
-    public ResponseEntity<?>scanBook(@PathVariable String qrCode){
-        BookCopy book = bookService.findByQR(qrCode);
+    //Scan code — a query param, not a path variable: a hand-written
+    //accession number (mirrored into qrCode) may now contain a "/"
+    //(e.g. "LIB/2019/045"), which the servlet container rejects as an
+    //encoded slash in a path segment.
+    @GetMapping("/scan")
+    public ResponseEntity<?>scanBook(@RequestParam String code){
+        BookCopy book = bookService.findByQR(code);
         return ResponseEntity.ok(book);
     }
 
@@ -87,10 +103,11 @@ public class BookController {
         return ResponseEntity.ok(book);
     }
 
-    //Teacher types the accession number written inside the book cover
-    @GetMapping("/accession/{accessionNumber}")
-    public ResponseEntity<?>getByAccessionNumber(@PathVariable String accessionNumber){
-        BookCopy copy = bookService.findByAccessionNumber(accessionNumber);
+    //Teacher types the accession number written inside the book cover.
+    //Query param for the same reason as /scan above.
+    @GetMapping("/accession")
+    public ResponseEntity<?>getByAccessionNumber(@RequestParam String number){
+        BookCopy copy = bookService.findByAccessionNumber(number);
         return ResponseEntity.ok(copy);
     }
 

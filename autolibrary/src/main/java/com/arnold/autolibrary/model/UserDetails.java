@@ -1,6 +1,7 @@
 package com.arnold.autolibrary.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -19,6 +20,10 @@ public class UserDetails {
     @Column(nullable = false,unique = true , length = 50)
     private String userName;
 
+    // WRITE_ONLY — accepted when creating a user (POST /api/users sends
+    // the initial password in this field) but never serialized back out;
+    // a bcrypt hash has no business leaving the server in any response.
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false,length = 255)
     private String passwordHash;
 

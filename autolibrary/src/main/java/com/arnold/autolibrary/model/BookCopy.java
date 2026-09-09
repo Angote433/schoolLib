@@ -19,7 +19,13 @@ public class BookCopy {
     @Column(nullable = false,unique = true, length = 50)
     private String qrCode;
 
-    @Column(name = "accession_number", length = 20, unique = true)
+    // Widened from 20 to 50 to accept hand-written accession numbers from
+    // a school's existing inventory (e.g. "LIB/2019/045") in addition to
+    // the generated ACC-{detailsId}-{sequence} format. See the migration
+    // SQL under src/main/resources/migrations — ddl-auto is 'validate',
+    // so the live DB column must be widened manually before deploying
+    // this change.
+    @Column(name = "accession_number", length = 50, unique = true)
     private String accessionNumber;
 
     @Enumerated(EnumType.STRING)

@@ -104,13 +104,19 @@ export default function Distributions() {
 
   const cancelFlagLost = () => setConfirmModal(null);
 
-  // ── LOAD ALL STUDENTS ONCE ─────────────────────────────
-  // Loaded once up front so the picker can search across the whole
-  // school instantly, instead of making the librarian pick a stream
-  // before they can even start typing a name.
+  // ── LOAD ALL STUDENTS ─────────────────────────────────
+  // Loaded up front so the picker can search across the whole school
+  // instantly, instead of making the librarian pick a stream before
+  // they can even start typing a name. Re-runs when user.streamId
+  // changes (Layout's background refreshUser() picks up a librarian
+  // reassigning this teacher's stream) so a teacher's data re-scopes to
+  // whichever stream the backend now considers theirs, without needing
+  // to log out (Feature 3.4) — the backend already scopes getAll() to
+  // the caller's current stream for a TEACHER.
   useEffect(() => {
     if (hasNoStream) {
       setLoadingStudents(false);
+      setAllStudents([]);
       return;
     }
     setLoadingStudents(true);
@@ -126,7 +132,7 @@ export default function Distributions() {
 
     loadRecentActivity();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasNoStream, user?.streamId]);
 
   // Auto focus the scan input when mode changes
   useEffect(() => {

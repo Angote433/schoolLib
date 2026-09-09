@@ -2,10 +2,34 @@ import { useState, useEffect, useRef } from 'react';
 import { bookService } from '../services/libraryApi';
 import { tokens, getStatusColor } from '../styles/tokens';
 import {
-  Modal, FormField, Input, Select, Button, Banner, EmptyState,
+  Modal, FormField, Input, Select, Textarea, Button, Banner, EmptyState,
   Card, StatusBadge, ModalActions,
 } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
+
+// Copy registration modes — see FEATURE_BATCH_2_PROMPT.md Feature 1.
+// AUTO stays the default so existing behaviour is unchanged for anyone
+// who doesn't need the other two.
+const COPY_MODES = [
+  { key: 'AUTO', label: 'Auto-generate' },
+  { key: 'RANGE', label: 'Number range' },
+  { key: 'LIST', label: 'Paste a list' },
+];
+
+const DEFAULT_COPIES_FORM = {
+  dateAcquired: new Date().toISOString().split('T')[0],
+  quantity: 1,
+  prefix: '', start: 1, count: 1, padWidth: 3, suffix: '',
+  rawList: '',
+};
+
+const PREVIEW_STATUS_LABEL = {
+  OK: '✓ OK',
+  DUPLICATE_IN_DB: 'Already used',
+  DUPLICATE_IN_BATCH: 'Duplicated in this list',
+  BLANK: 'Blank',
+  TOO_LONG: 'Too long (max 50 characters)',
+};
 
 const STICKER_LAYOUTS = {
   '4x5': { labelCols: 4, labelRows: 5, orientation: 'landscape', labelWidthMm: 63.5, labelHeightMm: 38.1, gapMm: 4 },
@@ -39,10 +63,10 @@ export default function Books() {
     titleName: '', subject: '', gradeLevel: '', publisher: '', isbn: '',
   });
 
-  const [copiesForm, setCopiesForm] = useState({
-    quantity: 1,
-    dateAcquired: new Date().toISOString().split('T')[0],
-  });
+  const [copyMode, setCopyMode] = useState('AUTO');
+  const [copiesForm, setCopiesForm] = useState(DEFAULT_COPIES_FORM);
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
 
   // Feedback
   const [success, setSuccess] = useState('');
@@ -126,27 +150,64 @@ export default function Books() {
   };
 
   // ── REGISTER COPIES ───────────────────────────────────
+  // Builds the request payload for whichever mode is currently selected —
+  // only the fields relevant to that mode are sent.
+  const buildCopyRequest = () => {
+    const base = { mode: copyMode, dateAcquired: copiesForm.dateAcquired };
+    if (copyMode === 'AUTO') {
+      return { ...base, quantity: parseInt(copiesForm.quantity) || 0 };
+    }
+    if (copyMode === 'RANGE') {
+      return {
+        ...base,
+        prefix: copiesForm.prefix,
+        start: parseInt(copiesForm.start),
+        count: parseInt(copiesForm.count) || 0,
+        padWidth: parseInt(copiesForm.padWidth),
+        suffix: copiesForm.suffix,
+      };
+    }
+    return { ...base, rawList: copiesForm.rawList };
+  };
+
+  // Any change to the mode or its fields invalidates the current preview —
+  // the librarian must preview again before the register button re-enables.
+  const updateCopiesForm = (changes) => {
+    setCopiesForm(prev => ({ ...prev, ...changes }));
+    setPreview(null);
+  };
+
+  const handlePreviewCopies = async () => {
+    setError('');
+    setPreviewing(true);
+    try {
+      const res = await bookService.previewCopies(workingBook.detailsId, buildCopyRequest());
+      setPreview(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to preview copies');
+      setPreview(null);
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const handleAddCopies = async (e) => {
     e.preventDefault();
+    if (!preview || preview.conflictCount > 0) return;
     setError('');
     setSubmitting(true);
 
     try {
-      await bookService.registerCopies(
-        workingBook.detailsId,
-        copiesForm.quantity,
-        copiesForm.dateAcquired,
-      );
+      await bookService.registerCopies(workingBook.detailsId, buildCopyRequest());
 
-      showSuccess(`${copiesForm.quantity} copies registered with accession numbers`);
+      showSuccess(`${preview.okCount} ${preview.okCount === 1 ? 'copy' : 'copies'} registered with accession numbers`);
       closeModal();
       loadBooks();
       await loadCopies(workingBook.detailsId);
       setExpandedBookId(workingBook.detailsId);
-      setCopiesForm({ quantity: 1, dateAcquired: new Date().toISOString().split('T')[0] });
 
     } catch (err) {
-      setError(err.response?.data || 'Failed to register copies');
+      setError(err.response?.data?.message || 'Failed to register copies');
     } finally {
       setSubmitting(false);
     }
@@ -188,6 +249,9 @@ export default function Books() {
     setModal(null);
     setWorkingBook(null);
     setError('');
+    setCopyMode('AUTO');
+    setCopiesForm(DEFAULT_COPIES_FORM);
+    setPreview(null);
   };
 
   const expandedBook = books.find(b => b.detailsId === expandedBookId);
@@ -445,40 +509,161 @@ export default function Books() {
 
       {/* ── ADD COPIES MODAL ─────────────────────────── */}
       {modal === 'addCopies' && (
-        <Modal title={`Add Copies — ${workingBook?.titleName}`} onClose={closeModal}>
+        <Modal title={`Add Copies — ${workingBook?.titleName}`} onClose={closeModal} maxWidth={620}>
           <form onSubmit={handleAddCopies}>
             {error && <Banner type="error">{error}</Banner>}
 
-            <Banner type="info">
-              Each copy will automatically receive a unique accession number (e.g. ACC-1-0001).
-              Write this number inside the front cover of each book.
-              Teachers will use this number to assign books to students.
-            </Banner>
-
-            <FormField label="Number of Copies" hint="QR codes will be generated for each copy">
-              <Input
-                type="number" min="1" max="500"
-                value={copiesForm.quantity}
-                onChange={e => setCopiesForm({ ...copiesForm, quantity: parseInt(e.target.value) })}
-                required
-              />
+            <FormField label="How are these copies numbered?">
+              <div style={styles.modeSelector}>
+                {COPY_MODES.map(m => (
+                  <button
+                    type="button" key={m.key}
+                    onClick={() => { setCopyMode(m.key); setPreview(null); }}
+                    style={{ ...styles.modeOption, ...(copyMode === m.key ? styles.modeOptionSelected : {}) }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
             </FormField>
+
+            {copyMode === 'AUTO' && (
+              <Banner type="info">
+                Each copy will automatically receive a unique accession number (e.g. ACC-1-0001).
+                Write this number inside the front cover of each book.
+              </Banner>
+            )}
+            {(copyMode === 'RANGE' || copyMode === 'LIST') && (
+              <Banner type="info">
+                {copyMode === 'RANGE'
+                  ? 'Use this when a school\'s existing books are already numbered consecutively by hand (e.g. a shelf numbered 001 to 080).'
+                  : 'Use this for books with irregular, non-sequential hand-written numbers — paste exactly what is written in each book.'}
+              </Banner>
+            )}
+
+            {copyMode === 'AUTO' && (
+              <FormField label="Number of Copies">
+                <Input
+                  type="number" min="1" max="1000"
+                  value={copiesForm.quantity}
+                  onChange={e => updateCopiesForm({ quantity: e.target.value })}
+                  required
+                />
+              </FormField>
+            )}
+
+            {copyMode === 'RANGE' && (
+              <>
+                <FormField label="Prefix (optional)" hint='e.g. "LIB/2019/"'>
+                  <Input
+                    value={copiesForm.prefix}
+                    onChange={e => updateCopiesForm({ prefix: e.target.value })}
+                  />
+                </FormField>
+                <div style={styles.rangeRow}>
+                  <FormField label="Start number">
+                    <Input
+                      type="number" min="0"
+                      value={copiesForm.start}
+                      onChange={e => updateCopiesForm({ start: e.target.value })}
+                      required
+                    />
+                  </FormField>
+                  <FormField label="Count">
+                    <Input
+                      type="number" min="1" max="1000"
+                      value={copiesForm.count}
+                      onChange={e => updateCopiesForm({ count: e.target.value })}
+                      required
+                    />
+                  </FormField>
+                  <FormField label="Zero-pad width">
+                    <Input
+                      type="number" min="0" max="10"
+                      value={copiesForm.padWidth}
+                      onChange={e => updateCopiesForm({ padWidth: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+                <FormField label="Suffix (optional)">
+                  <Input
+                    value={copiesForm.suffix}
+                    onChange={e => updateCopiesForm({ suffix: e.target.value })}
+                  />
+                </FormField>
+              </>
+            )}
+
+            {copyMode === 'LIST' && (
+              <FormField label="Accession numbers" hint="One per line, or comma-separated. Blank lines are ignored.">
+                <Textarea
+                  rows={6}
+                  placeholder={'LIB/2019/001\nLIB/2019/002\nHIST-12'}
+                  value={copiesForm.rawList}
+                  onChange={e => updateCopiesForm({ rawList: e.target.value })}
+                />
+              </FormField>
+            )}
 
             <FormField label="Date Acquired">
               <Input
                 type="date"
                 value={copiesForm.dateAcquired}
-                onChange={e => setCopiesForm({ ...copiesForm, dateAcquired: e.target.value })}
+                onChange={e => updateCopiesForm({ dateAcquired: e.target.value })}
                 required
               />
             </FormField>
 
+            <Button
+              type="button" variant="secondary" onClick={handlePreviewCopies}
+              disabled={previewing} style={{ marginBottom: 16 }}
+            >
+              {previewing ? 'Previewing…' : '👁️ Preview'}
+            </Button>
+
+            {preview && (
+              <div style={styles.previewBox}>
+                <div style={styles.previewSummary}>
+                  <strong>{preview.okCount}</strong> OK
+                  {preview.conflictCount > 0 && (
+                    <span style={{ color: tokens.colors.danger }}> · <strong>{preview.conflictCount}</strong> conflict{preview.conflictCount === 1 ? '' : 's'}</span>
+                  )}
+                  {' · '}{preview.totalRequested} total
+                </div>
+                <div style={styles.previewList}>
+                  {preview.entries.slice(0, 20).map((entry, i) => (
+                    <div
+                      key={i}
+                      style={{ ...styles.previewRow, ...(entry.status !== 'OK' ? styles.previewRowConflict : {}) }}
+                    >
+                      <span style={styles.previewNumber}>{entry.accessionNumber || '(blank)'}</span>
+                      <span style={styles.previewStatus}>
+                        {entry.status === 'DUPLICATE_IN_DB' && entry.conflictTitle
+                          ? `Already used by "${entry.conflictTitle}"`
+                          : PREVIEW_STATUS_LABEL[entry.status] || entry.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {preview.entries.length > 20 && (
+                  <div style={styles.previewMore}>
+                    …and {preview.entries.length - 20} more ({preview.okCount} OK, {preview.conflictCount} conflicts overall)
+                  </div>
+                )}
+              </div>
+            )}
+
             <ModalActions>
               <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-              <Button type="submit" variant="primary" disabled={submitting}>
+              <Button
+                type="submit" variant="primary"
+                disabled={submitting || !preview || preview.conflictCount > 0}
+              >
                 {submitting
                   ? 'Registering…'
-                  : `Register ${copiesForm.quantity} ${copiesForm.quantity === 1 ? 'Copy' : 'Copies'}`}
+                  : preview
+                  ? `Register ${preview.okCount} ${preview.okCount === 1 ? 'Copy' : 'Copies'}`
+                  : 'Preview first'}
               </Button>
             </ModalActions>
           </form>
@@ -667,6 +852,40 @@ const styles = {
   qrPreviewImg: { width: 90, height: 90, display: 'block', margin: '0 auto' },
   qrPreviewCode: { fontSize: 9, color: tokens.colors.textSecondary, marginTop: 4, wordBreak: 'break-all', fontFamily: tokens.font.mono },
   qrPreviewTitle: { fontSize: 9, color: tokens.colors.textMuted, marginTop: 2, fontWeight: 600 },
+  modeSelector: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  modeOption: {
+    flex: '1 1 auto', padding: '9px 14px', borderRadius: tokens.radius.sm,
+    border: `1.5px solid ${tokens.colors.border}`, background: tokens.colors.card,
+    color: tokens.colors.textSecondary, fontSize: 13, fontWeight: 600,
+    cursor: 'pointer', fontFamily: tokens.font.family, transition: tokens.transition,
+    whiteSpace: 'nowrap',
+  },
+  modeOptionSelected: {
+    border: `1.5px solid ${tokens.colors.primary}`,
+    background: tokens.colors.primary, color: '#fff',
+  },
+  rangeRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 },
+  previewBox: {
+    border: `1.5px solid ${tokens.colors.border}`, borderRadius: tokens.radius.sm,
+    marginBottom: 16, overflow: 'hidden',
+  },
+  previewSummary: {
+    padding: '10px 14px', background: tokens.colors.surface,
+    fontSize: 13, color: tokens.colors.textSecondary,
+    borderBottom: `1px solid ${tokens.colors.border}`,
+  },
+  previewList: { maxHeight: 260, overflowY: 'auto' },
+  previewRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '8px 14px', fontSize: 12.5, borderBottom: `1px solid ${tokens.colors.border}`,
+  },
+  previewRowConflict: { background: tokens.colors.dangerLight },
+  previewNumber: { fontFamily: tokens.font.mono, color: tokens.colors.textPrimary, wordBreak: 'break-all' },
+  previewStatus: { color: tokens.colors.textMuted, fontSize: 11.5, flexShrink: 0, marginLeft: 12, textAlign: 'right' },
+  previewMore: {
+    padding: '8px 14px', fontSize: 12, color: tokens.colors.textMuted,
+    background: tokens.colors.surface, textAlign: 'center',
+  },
   hiddenPrintArea: { visibility: 'hidden' },
   printTitle: { fontSize: 16, fontWeight: 700, marginBottom: 16, color: tokens.colors.textPrimary },
   printGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 },

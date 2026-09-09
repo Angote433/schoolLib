@@ -42,7 +42,9 @@ export default function Losses() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // ── LOAD ON MOUNT ─────────────────────────────────────
+  // ── LOAD ON MOUNT, AND WHEN THE TEACHER'S STREAM CHANGES ─
+  // See Distributions.jsx / Students.jsx for why this depends on
+  // user.streamId rather than running once (Feature 3.4).
   useEffect(() => {
     if (hasNoStream) {
       setLoading(false);
@@ -50,7 +52,7 @@ export default function Losses() {
     }
     loadPending();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasNoStream, user?.streamId]);
 
   // Reload when tab changes
   useEffect(() => {

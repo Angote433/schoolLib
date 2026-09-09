@@ -53,10 +53,13 @@ export default function Students() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // ── LOAD ON MOUNT ─────────────────────────────────────
+  // ── LOAD ON MOUNT, AND WHEN THE TEACHER'S STREAM CHANGES ─
   // Librarian: class → stream cascading selectors, as before.
   // Teacher: no selector at all — jump straight to their own stream,
-  // resolved from AuthContext (set at login), never from a dropdown.
+  // resolved from AuthContext. Depends on user.streamId (not just []) so
+  // that when a librarian reassigns this teacher elsewhere, Layout's
+  // background refreshUser() picks it up and this page re-syncs without
+  // the teacher needing to log out (Feature 3.4).
   useEffect(() => {
     if (isTeacher) {
       setLoadingClasses(false);
@@ -64,12 +67,16 @@ export default function Students() {
         setSelectedStreamId(String(user.streamId));
         loadMyStream(user.streamId);
         // loadStudents fires from the selectedStreamId effect below
+      } else {
+        // Stream was removed — clear anything left over from the old one.
+        setSelectedStreamId('');
+        setMyStream(null);
       }
     } else {
       loadClasses();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isTeacher, user?.streamId]);
 
   const loadClasses = async () => {
     setLoadingClasses(true);

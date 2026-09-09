@@ -87,9 +87,12 @@ public class SecurityConfig {
                         // Login and registration are public
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // A teacher may always read their own profile —
-                        // must come before the blanket /api/users/** rule.
+                        // A user may always read and self-service-edit
+                        // their own profile/password — must come before
+                        // the blanket /api/users/** rule below.
                         .requestMatchers(HttpMethod.GET, "/api/users/me")
+                        .hasAnyRole("LIBRARIAN", "TEACHER")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
 
                         // Librarian only endpoints
@@ -100,6 +103,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/streams/**")
                         .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/streams/**")
+                        .hasRole("LIBRARIAN")
+                        // Unassigning a stream's teacher — Feature 3 —
+                        // must come before the general GET rule below so
+                        // it isn't left to fall through to anyRequest().
+                        .requestMatchers(HttpMethod.DELETE, "/api/streams/**")
                         .hasRole("LIBRARIAN")
                         .requestMatchers(HttpMethod.GET, "/api/streams")
                         .hasRole("LIBRARIAN")
@@ -136,6 +144,10 @@ public class SecurityConfig {
                         // Single-stream lookup — a teacher may read only
                         // their own (enforced in StreamService).
                         .requestMatchers(HttpMethod.GET, "/api/streams/*")
+                        .hasAnyRole("LIBRARIAN", "TEACHER")
+                        // Who currently teaches a stream — same
+                        // own-stream-only scoping for a TEACHER caller.
+                        .requestMatchers(HttpMethod.GET, "/api/streams/*/teacher")
                         .hasAnyRole("LIBRARIAN", "TEACHER")
 
                         // Everything else requires authentication

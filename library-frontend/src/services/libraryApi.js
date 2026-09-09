@@ -20,8 +20,12 @@ export const streamService = {
   getByClass: (classId) => api.get(`/streams/class/${classId}`),
   create: (data, classId) =>
     api.post(`/streams?classId=${classId}`, data),
-  assignTeacher: (streamId, userId) =>
-    api.put(`/streams/${streamId}/teacher?userId=${userId}`),
+  assignTeacher: (streamId, userId, confirm = false) =>
+    api.put(`/streams/${streamId}/teacher`, { userId, confirm }),
+  removeTeacher: (streamId) =>
+    api.delete(`/streams/${streamId}/teacher`),
+  getTeacher: (streamId) =>
+    api.get(`/streams/${streamId}/teacher`),
 };
 
 // ── USERS ─────────────────────────────────────────────
@@ -34,6 +38,10 @@ export const userService = {
   activate: (id) => api.put(`/users/${id}/activate`),
   assignStream: (id, streamId) =>
     api.put(`/users/${id}/stream?streamId=${streamId}`),
+  updateProfile: (data) => api.put('/users/me', data),
+  changePassword: (data) => api.put('/users/me/password', data),
+  resetPassword: (id, newPassword) =>
+    api.put(`/users/${id}/reset-password`, { newPassword }),
 };
 
 // ── STUDENTS ──────────────────────────────────────────
@@ -65,25 +73,29 @@ export const bookService = {
   getCopies: (bookId) => api.get(`/books/copies/${bookId}`),
   getAvailableCopies: (bookId) =>
     api.get(`/books/copies/${bookId}/available`),
-  registerCopies: (id, quantity, dateAcquired) =>
-    api.post(
-      `/books/${id}/copies?quantity=${quantity}&dateAcquired=${dateAcquired}`
-    ),
-  scanByQr: (qrCode) => api.get(`/books/scan/${encodeURIComponent(qrCode)}`),
+  previewCopies: (id, request) =>
+    api.post(`/books/${id}/copies/preview`, request),
+  registerCopies: (id, request) =>
+    api.post(`/books/${id}/copies`, request),
+  // qrCode/accessionNumber go as a query param, not a path segment — a
+  // hand-written accession number (Feature 1, Modes B/C) may contain a
+  // "/" (e.g. "LIB/2019/045"), which the servlet container rejects as an
+  // encoded slash in a path segment.
+  scanByQr: (qrCode) => api.get('/books/scan', { params: { code: qrCode } }),
   // QR image URL — used directly in <img src={...} />
   getQrImageUrl: (copyId) =>
     `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/books/copies/${copyId}/qr-image`,
   getByIsbn: (isbn) =>
     api.get(`/books/isbn/${isbn}`),
   getByAccession: (accessionNumber) =>
-    api.get(`/books/accession/${encodeURIComponent(accessionNumber)}`),
+    api.get('/books/accession', { params: { number: accessionNumber } }),
 };
 
 // ── DISTRIBUTIONS ─────────────────────────────────────
 export const distributionService = {
   distribute: (data) => api.post('/distributions', data),
   returnBook: (qrCode) =>
-    api.put(`/distributions/return/${encodeURIComponent(qrCode)}`),
+    api.put('/distributions/return', null, { params: { qrCode } }),
   flagLost: (data) => api.post('/distributions/loss', data),
   getByStudent: (studentId) =>
     api.get(`/distributions/student/${studentId}`),
@@ -100,7 +112,7 @@ export const distributionService = {
 export const borrowService = {
   borrow: (data) => api.post('/borrows', data),
   returnBook: (qrCode) =>
-    api.put(`/borrows/return/${encodeURIComponent(qrCode)}`),
+    api.put('/borrows/return', null, { params: { qrCode } }),
   getActive: () => api.get('/borrows/active'),
   getOverdue: () => api.get('/borrows/overdue'),
   getByStudent: (studentId) =>

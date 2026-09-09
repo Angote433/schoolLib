@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { userService, streamService } from '../services/libraryApi';
+import { useAuth } from '../context/AuthContext';
 import { tokens } from '../styles/tokens';
 import {
   Modal, FormField, Input, Button, Banner, EmptyState,
@@ -7,8 +8,11 @@ import {
 } from '../components/SharedComponents';
 import useScreenSize from '../hooks/useScreenSize';
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function Users() {
   const { isMobile } = useScreenSize();
+  const { user: currentUser } = useAuth();
 
   const [users, setUsers] = useState([]);
   const [streams, setStreams] = useState([]);
@@ -22,11 +26,15 @@ export default function Users() {
   const [searchText, setSearchText] = useState('');
 
   // Modal control
-  // null | 'createUser' | 'confirmDeactivate' | 'confirmActivate'
+  // null | 'createUser' | 'confirmDeactivate' | 'confirmActivate' | 'resetPassword'
   const [modal, setModal] = useState(null);
 
-  // The user being acted on (deactivate/activate)
+  // The user being acted on (deactivate/activate/reset password)
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // Reset password form
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState('');
 
   // Create user form
   const [form, setForm] = useState({
@@ -129,6 +137,28 @@ export default function Users() {
     }
   };
 
+  // ── RESET PASSWORD (librarian → another user) ─────────
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setResetPasswordError('');
+
+    if (resetPasswordValue.length < MIN_PASSWORD_LENGTH) {
+      setResetPasswordError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await userService.resetPassword(selectedUser.userId, resetPasswordValue);
+      showSuccess(`Password reset for ${selectedUser.fullName}`);
+      closeModal();
+    } catch (err) {
+      setResetPasswordError(err.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // ── HELPERS ───────────────────────────────────────────
   const showSuccess = (msg) => {
     setSuccess(msg);
@@ -139,6 +169,8 @@ export default function Users() {
     setModal(null);
     setSelectedUser(null);
     setError('');
+    setResetPasswordValue('');
+    setResetPasswordError('');
   };
 
   const getTeacherStream = (user) => {
@@ -201,6 +233,7 @@ export default function Users() {
             <UserCard
               key={user.userId}
               user={user}
+              isSelf={user.userId === currentUser?.userId}
               streamName={getTeacherStream(user)}
               onDeactivate={() => {
                 setSelectedUser(user);
@@ -209,6 +242,10 @@ export default function Users() {
               onActivate={() => {
                 setSelectedUser(user);
                 setModal('confirmActivate');
+              }}
+              onResetPassword={() => {
+                setSelectedUser(user);
+                setModal('resetPassword');
               }}
             />
           ))}
@@ -341,12 +378,40 @@ export default function Users() {
         </Modal>
       )}
 
+      {/* ── RESET PASSWORD MODAL ─────────────────────── */}
+      {modal === 'resetPassword' && (
+        <Modal title={`Reset Password — ${selectedUser?.fullName}`} onClose={closeModal}>
+          <form onSubmit={handleResetPassword}>
+            {resetPasswordError && <Banner type="error">{resetPasswordError}</Banner>}
+            <p style={styles.confirmSub}>
+              This does not require {selectedUser?.fullName}'s current password.
+              Share the new one with them directly — they can change it again
+              from their own Settings page afterwards.
+            </p>
+            <FormField label="New Password" hint={`Minimum ${MIN_PASSWORD_LENGTH} characters`}>
+              <Input
+                type="password"
+                value={resetPasswordValue}
+                onChange={e => setResetPasswordValue(e.target.value)}
+                required
+              />
+            </FormField>
+            <ModalActions>
+              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                {submitting ? 'Resetting…' : 'Reset Password'}
+              </Button>
+            </ModalActions>
+          </form>
+        </Modal>
+      )}
+
     </div>
   );
 }
 
 // ── USER CARD COMPONENT ───────────────────────────────────────────────
-function UserCard({ user, streamName, onDeactivate, onActivate }) {
+function UserCard({ user, streamName, isSelf, onDeactivate, onActivate, onResetPassword }) {
   const isLibrarian = user.role === 'LIBRARIAN';
   const isActive = user.active;
 
@@ -397,6 +462,13 @@ function UserCard({ user, streamName, onDeactivate, onActivate }) {
         ) : (
           <Button variant="success" size="sm" style={{ width: '100%' }} onClick={onActivate}>
             Activate
+          </Button>
+        )}
+        {isSelf ? (
+          <div style={cardStyles.selfNote}>Use Settings to change your own password</div>
+        ) : (
+          <Button variant="secondary" size="sm" style={{ width: '100%', marginTop: 8 }} onClick={onResetPassword}>
+            Reset Password
           </Button>
         )}
       </div>
@@ -460,4 +532,8 @@ const cardStyles = {
   },
   streamDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
   actions: { marginTop: 14 },
+  selfNote: {
+    marginTop: 8, fontSize: 11, color: tokens.colors.textMuted,
+    textAlign: 'center', lineHeight: 1.4,
+  },
 };

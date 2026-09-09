@@ -17,6 +17,19 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // A page that just logged the user out on purpose (e.g. Settings after
+  // a password change) leaves a one-time message here for us to show.
+  // Read via localStorage rather than router navigation state: the
+  // logout it accompanies also flips ProtectedRoute's own "no user ->
+  // redirect to /" logic, and that redirect can race the page's own
+  // navigate() and win, silently dropping any state the page attached.
+  // localStorage isn't part of that race.
+  const [infoMessage] = useState(() => {
+    const msg = localStorage.getItem('authMessage');
+    if (msg) localStorage.removeItem('authMessage');
+    return msg;
+  });
+
   // Get the login function from AuthContext
   const { login } = useAuth();
 
@@ -114,6 +127,9 @@ export default function Login() {
               style={styles.input}
             />
           </div>
+
+          {/* Info message — e.g. "Password updated. Please log in again." */}
+          {infoMessage && !error && <Banner type="info">{infoMessage}</Banner>}
 
           {/* Error message — only shows when there is an error */}
           {error && <Banner type="error">{error}</Banner>}

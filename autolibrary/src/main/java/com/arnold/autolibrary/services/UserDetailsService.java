@@ -3,10 +3,9 @@ package com.arnold.autolibrary.services;
 import com.arnold.autolibrary.exception.BusinessRuleException;
 import com.arnold.autolibrary.exception.ResourceNotFoundException;
 import com.arnold.autolibrary.model.Role;
-import com.arnold.autolibrary.model.Stream;
 import com.arnold.autolibrary.model.UserDetails;
-import com.arnold.autolibrary.repo.StreamRepo;
 import com.arnold.autolibrary.repo.UserDetailsRepo;
+import com.arnold.autolibrary.security.AuthUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,15 +17,19 @@ import java.util.List;
 @Service
 public class UserDetailsService {
 
+    private static final int MIN_PASSWORD_LENGTH = 8;
+
     private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
 
     @Autowired
     UserDetailsRepo userDetailsRepo;
 
     @Autowired
-    StreamRepo streamRepo;
+    private StreamService streamService;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private AuthUtil authUtil;
 
 
     public UserDetails createUser(UserDetails user){
@@ -89,41 +92,87 @@ public class UserDetailsService {
         return saved;
     }
 
+    // Legacy path (PUT /api/users/{id}/stream). Delegates to
+    // StreamService.assignTeacher — the single method that writes
+    // stream.teacher_id / user_details.stream_id — instead of writing
+    // either column itself, so the two can never drift apart by having
+    // two independent implementations (see Feature 3.1). This endpoint
+    // has no confirm concept, so it auto-confirms; the dedicated
+    // PUT /api/streams/{id}/teacher endpoint is the one that surfaces the
+    // "this will displace an existing assignment" warning to a caller.
     @org.springframework.transaction.annotation.Transactional
     public UserDetails assignStream(int userId,int streamId){
-        UserDetails user = userDetailsRepo.findById(userId).orElseThrow(
+        streamService.assignTeacher(streamId, userId, true);
+        return userDetailsRepo.findById(userId).orElseThrow(
                 ()->new ResourceNotFoundException("User not found")
         );
-        //only teachers get assigned streams
-        if(user.getRole() != Role.TEACHER  ){
-            throw new BusinessRuleException("Only teachers are assigned streams");
+    }
+
+    // Self-service — a user editing their own fullName. userName, role,
+    // streamId and isActive are never touched here (see 2.1) — the
+    // request DTO only carries fullName, so there is nothing else to
+    // even accidentally trust from the client.
+    public UserDetails updateOwnProfile(String fullName){
+        UserDetails user = authUtil.getCurrentUser();
+
+        if(fullName == null || fullName.isBlank()){
+            throw new IllegalArgumentException("Full name cannot be blank");
         }
 
-        Stream stream = streamRepo.findById(streamId).orElseThrow(
-                ()->new ResourceNotFoundException("Stream not found with id"+ streamId)
-        );
-
-        //teacher already managing a different stream?
-        streamRepo.findByTeacher(user).ifPresent(existingStream -> {
-            if(existingStream.getStreamId() != streamId){
-                throw new BusinessRuleException("Teacher manages another stream "+ existingStream.getStreamName());
-            }
-        });
-
-        //clear the previous teacher of this stream (if being reassigned)
-        UserDetails previousTeacher = stream.getTeacher();
-        if(previousTeacher != null && previousTeacher.getUserId() != userId){
-            previousTeacher.setStream(null);
-            userDetailsRepo.save(previousTeacher);
-        }
-
-        //keep both sides of the relationship in sync
-        user.setStream(stream);
-        stream.setTeacher(user);
-        streamRepo.save(stream);
-
+        user.setFullName(fullName.trim());
         UserDetails saved = userDetailsRepo.save(user);
-        log.info("Teacher assigned to stream: user={} stream={}", saved.getUserName(), stream.getStreamName());
+        log.info("Profile updated: user={}", saved.getUserName());
         return saved;
+    }
+
+    // Self-service password change. The caller is always resolved from
+    // the SecurityContext (never a userId from the request) — see
+    // AuthUtil. currentPassword must match before anything is written.
+    @org.springframework.transaction.annotation.Transactional
+    public void changeOwnPassword(String currentPassword, String newPassword, String confirmPassword){
+        UserDetails user = authUtil.getCurrentUser();
+
+        if(!passwordEncoder.matches(currentPassword, user.getPasswordHash())){
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        if(newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH){
+            throw new IllegalArgumentException("New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
+        }
+        if(!newPassword.equals(confirmPassword)){
+            throw new IllegalArgumentException("New password and confirmation do not match");
+        }
+        if(passwordEncoder.matches(newPassword, user.getPasswordHash())){
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userDetailsRepo.save(user);
+        // Stateless JWTs already issued to this user stay valid until they
+        // expire — no token blacklist. The frontend clears the session and
+        // sends the user back to login instead (see Settings.jsx).
+        log.info("Password changed (self-service): user={}", user.getUserName());
+    }
+
+    // Librarian-only — resets another user's password without knowing
+    // their current one. A librarian may not use this path on their own
+    // account; the self-service endpoint above is for that.
+    @org.springframework.transaction.annotation.Transactional
+    public void resetPassword(int targetUserId, String newPassword){
+        UserDetails caller = authUtil.getCurrentUser();
+        authUtil.assertLibrarian(caller);
+
+        if(caller.getUserId() == targetUserId){
+            throw new BusinessRuleException("Use Settings to change your own password, not the reset action");
+        }
+
+        UserDetails target = getUserById(targetUserId);
+
+        if(newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH){
+            throw new IllegalArgumentException("New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
+        }
+
+        target.setPasswordHash(passwordEncoder.encode(newPassword));
+        userDetailsRepo.save(target);
+        log.info("Password reset: user={} by={}", target.getUserName(), caller.getUserName());
     }
 }

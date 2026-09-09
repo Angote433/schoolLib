@@ -48,8 +48,12 @@ public class DistributionController {
     Teacher scans a book and marks it as returned at the end of every year
     this api is called
      */
-    @PutMapping("/return/{qrCode}")
-    public ResponseEntity<?>returnBook(@PathVariable String qrCode){
+    //Query param, not a path variable — a hand-written accession number
+    //(mirrored into qrCode) may contain a "/" (e.g. "LIB/2019/045"),
+    //which the servlet container rejects as an encoded slash in a path
+    //segment.
+    @PutMapping("/return")
+    public ResponseEntity<?>returnBook(@RequestParam String qrCode){
         DistributionRecord record = distService.returnBook(qrCode);
         return ResponseEntity.ok(record);
     }

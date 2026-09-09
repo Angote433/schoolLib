@@ -25,25 +25,62 @@ public class UserDetailsController {
     @Autowired
     private AuthUtil authUtil;
 
-    // A teacher may always fetch their own profile — this is the one
-    // /api/users/** endpoint not restricted to LIBRARIAN (see
+    // A teacher may always fetch their own profile — this is one of the
+    // few /api/users/** endpoints not restricted to LIBRARIAN (see
     // SecurityConfig). It never accepts an id, so there is nothing to
     // scope: it always returns the caller's own record.
     @GetMapping("/me")
     public ResponseEntity<?> getMyProfile(){
-        UserDetails user = authUtil.getCurrentUser();
+        return ResponseEntity.ok(profileResponse(authUtil.getCurrentUser()));
+    }
 
+    // streamId/streamName are always present in the response (null when
+    // the caller has no stream) rather than omitted — the frontend uses
+    // this to detect a stream being *removed*, which it can only do if
+    // the key is there to compare against, not just missing.
+    private Map<String, Object> profileResponse(UserDetails user){
         Map<String, Object> response = new HashMap<>();
         response.put("userId", user.getUserId());
         response.put("fullName", user.getFullName());
         response.put("userName", user.getUserName());
         response.put("role", user.getRole());
+        response.put("isActive", user.isActive());
+        response.put("streamId", user.getStream() != null ? user.getStream().getStreamId() : null);
+        response.put("streamName", user.getStream() != null ? user.getStream().getStreamName() : null);
+        return response;
+    }
 
-        if(user.getStream() != null){
-            response.put("streamId", user.getStream().getStreamId());
-            response.put("streamName", user.getStream().getStreamName());
-        }
+    // Self-service — only fullName may change (see UserDetailsService for
+    // the full list of what is deliberately NOT touched here).
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMyProfile(@RequestBody ProfileUpdateRequest request){
+        UserDetails updated = userdetailsService.updateOwnProfile(request.getFullName());
+        return ResponseEntity.ok(profileResponse(updated));
+    }
 
+    // Self-service password change. The API is stateless — a JWT already
+    // issued stays valid until it expires — so the frontend is expected
+    // to clear the session and redirect to login on success rather than
+    // this endpoint trying to invalidate anything server-side.
+    @PutMapping("/me/password")
+    public ResponseEntity<?> changeMyPassword(@RequestBody PasswordChangeRequest request){
+        userdetailsService.changeOwnPassword(
+                request.getCurrentPassword(), request.getNewPassword(), request.getConfirmPassword());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Password updated. Please log in again.");
+        return ResponseEntity.ok(response);
+    }
+
+    // Librarian only (enforced at the route level and again in the
+    // service) — for the "teacher forgot their password" case. Does not
+    // require the current password.
+    @PutMapping("/{id}/reset-password")
+    public ResponseEntity<?> resetPassword(@PathVariable int id, @RequestBody ResetPasswordRequest request){
+        userdetailsService.resetPassword(id, request.getNewPassword());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Password reset successfully");
         return ResponseEntity.ok(response);
     }
 
@@ -96,5 +133,34 @@ public class UserDetailsController {
     public ResponseEntity<?>assignStream(@PathVariable int id,@RequestParam int streamId){
         UserDetails updated = userdetailsService.assignStream(id,streamId);
         return ResponseEntity.ok(updated);
+    }
+
+    public static class ProfileUpdateRequest {
+        private String fullName;
+
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+    }
+
+    public static class PasswordChangeRequest {
+        private String currentPassword;
+        private String newPassword;
+        private String confirmPassword;
+
+        public String getCurrentPassword() { return currentPassword; }
+        public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
+
+        public String getNewPassword() { return newPassword; }
+        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+
+        public String getConfirmPassword() { return confirmPassword; }
+        public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+    }
+
+    public static class ResetPasswordRequest {
+        private String newPassword;
+
+        public String getNewPassword() { return newPassword; }
+        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
     }
 }

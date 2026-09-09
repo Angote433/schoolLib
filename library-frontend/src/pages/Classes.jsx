@@ -27,10 +27,20 @@ export default function Classes() {
 
   // Controls which modal is open
   const [modal, setModal] = useState(null);
-  // modal values: 'addClass' | 'addStream' | 'assignTeacher'
+  // modal values: 'addClass' | 'addStream' | 'assignTeacher' | 'removeTeacher'
 
-  // The stream currently being assigned a teacher
+  // The stream currently being assigned/unassigned a teacher
   const [selectedStream, setSelectedStream] = useState(null);
+
+  // All streams (every class) — used only to show, next to each
+  // candidate teacher in the assign modal, which stream (if any) they
+  // currently hold, so the librarian can see the consequence before
+  // choosing (Feature 3.5).
+  const [allStreams, setAllStreams] = useState([]);
+
+  // Set once the API has warned that this assignment would displace an
+  // existing link — holds the warning text; requires a second click.
+  const [assignWarning, setAssignWarning] = useState('');
 
   // Form states
   const [classForm, setClassForm] = useState({
@@ -157,21 +167,35 @@ export default function Classes() {
   const handleOpenAssign = async (stream) => {
     setSelectedStream(stream);
     setSelectedTeacherId('');
+    setAssignWarning('');
     setError('');
 
     try {
-      const res = await userService.getByRole('TEACHER');
-      const activeTeachers = res.data.filter(t => t.active);
-      setTeachers(activeTeachers);
+      const [teachersRes, streamsRes] = await Promise.all([
+        userService.getByRole('TEACHER'),
+        streamService.getAll(),
+      ]);
+      setTeachers(teachersRes.data.filter(t => t.active));
+      setAllStreams(streamsRes.data);
     } catch (err) {
       setTeachers([]);
+      setAllStreams([]);
     }
 
     setModal('assignTeacher');
   };
 
-  //  ASSIGN TEACHER
-  const handleAssignTeacher = async () => {
+  // Which stream (if any) a given teacher currently holds — shown next
+  // to each candidate so the librarian sees the consequence up front.
+  const currentStreamOf = (teacherId) => {
+    const stream = allStreams.find(s => s.teacher?.userId === teacherId);
+    return stream ? stream.streamName : null;
+  };
+
+  //  ASSIGN TEACHER — first call has confirm=false; a 409 means it would
+  //  displace an existing link, so the warning is shown and a second
+  //  click (confirm=true) is required to proceed.
+  const handleAssignTeacher = async (confirm = false) => {
     if (!selectedTeacherId || submitting) {
       if (!selectedTeacherId) setError('Please select a teacher first');
       return;
@@ -183,7 +207,8 @@ export default function Classes() {
     try {
       await streamService.assignTeacher(
         parseInt(selectedStream.streamId),
-        parseInt(selectedTeacherId)
+        parseInt(selectedTeacherId),
+        confirm
       );
 
       const teacher = teachers.find(t => t.userId === parseInt(selectedTeacherId));
@@ -196,7 +221,31 @@ export default function Classes() {
       setStreams(res.data);
 
     } catch (err) {
-      setError(err.response?.data || 'Failed to assign teacher');
+      if (err.response?.status === 409 && !confirm) {
+        setAssignWarning(err.response.data?.message || 'This will displace an existing assignment.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to assign teacher');
+        setAssignWarning('');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── REMOVE TEACHER ─────────────────────────────────────
+  const handleRemoveTeacher = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await streamService.removeTeacher(selectedStream.streamId);
+      showSuccess(`Teacher removed from stream ${selectedStream.streamName}`);
+      closeModal();
+
+      const res = await streamService.getByClass(expandedClassId);
+      setStreams(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to remove teacher');
+      closeModal();
     } finally {
       setSubmitting(false);
     }
@@ -211,6 +260,8 @@ export default function Classes() {
   const closeModal = () => {
     setModal(null);
     setError('');
+    setAssignWarning('');
+    setSelectedStream(null);
   };
 
   const expandedClass = classes.find(c => c.classId === expandedClassId);
@@ -289,6 +340,7 @@ export default function Classes() {
                             key={stream.streamId}
                             stream={stream}
                             onAssignTeacher={handleOpenAssign}
+                            onRemoveTeacher={() => { setSelectedStream(stream); setModal('removeTeacher'); }}
                           />
                         ))}
                       </div>
@@ -384,6 +436,7 @@ export default function Classes() {
       {modal === 'assignTeacher' && (
         <Modal title={`Assign Teacher to ${selectedStream?.streamName}`} onClose={closeModal}>
           {error && <Banner type="error">{error}</Banner>}
+          {assignWarning && <Banner type="warning">{assignWarning}</Banner>}
 
           {teachers.length === 0 ? (
             <div style={styles.noTeachersMsg}>
@@ -400,39 +453,81 @@ export default function Classes() {
               </p>
 
               <div style={styles.teacherList}>
-                {teachers.map((teacher) => (
-                  <div
-                    key={teacher.userId}
-                    style={{
-                      ...styles.teacherItem,
-                      ...(selectedTeacherId === String(teacher.userId) ? styles.teacherItemSelected : {}),
-                    }}
-                    onClick={() => setSelectedTeacherId(String(teacher.userId))}
-                  >
-                    <Avatar name={teacher.fullName} size={36} background={tokens.colors.primary} />
-                    <div>
-                      <div style={styles.teacherName}>{teacher.fullName}</div>
-                      <div style={styles.teacherUsername}>@{teacher.userName}</div>
+                {teachers.map((teacher) => {
+                  const currentStream = currentStreamOf(teacher.userId);
+                  return (
+                    <div
+                      key={teacher.userId}
+                      style={{
+                        ...styles.teacherItem,
+                        ...(selectedTeacherId === String(teacher.userId) ? styles.teacherItemSelected : {}),
+                      }}
+                      onClick={() => { setSelectedTeacherId(String(teacher.userId)); setAssignWarning(''); }}
+                    >
+                      <Avatar name={teacher.fullName} size={36} background={tokens.colors.primary} />
+                      <div>
+                        <div style={styles.teacherName}>{teacher.fullName}</div>
+                        <div style={styles.teacherUsername}>
+                          @{teacher.userName}
+                          {currentStream && currentStream !== selectedStream?.streamName && (
+                            <span style={styles.teacherCurrentStream}> · currently teaches {currentStream}</span>
+                          )}
+                        </div>
+                      </div>
+                      {selectedTeacherId === String(teacher.userId) && (
+                        <span style={styles.checkmark}>✓</span>
+                      )}
                     </div>
-                    {selectedTeacherId === String(teacher.userId) && (
-                      <span style={styles.checkmark}>✓</span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <ModalActions>
                 <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
-                <Button
-                  variant="primary"
-                  onClick={handleAssignTeacher}
-                  disabled={!selectedTeacherId || submitting}
-                >
-                  {submitting ? 'Assigning…' : 'Assign Teacher'}
-                </Button>
+                {assignWarning ? (
+                  <Button
+                    variant="danger"
+                    onClick={() => handleAssignTeacher(true)}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Confirming…' : 'Confirm & Continue'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={() => handleAssignTeacher(false)}
+                    disabled={!selectedTeacherId || submitting}
+                  >
+                    {submitting ? 'Assigning…' : 'Assign Teacher'}
+                  </Button>
+                )}
               </ModalActions>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* ── REMOVE TEACHER MODAL ─────────────────────── */}
+      {modal === 'removeTeacher' && (
+        <Modal title="Remove Teacher" onClose={closeModal}>
+          {error && <Banner type="error">{error}</Banner>}
+          <div style={styles.confirmContent}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <p style={styles.confirmText}>
+              Remove <strong>{selectedStream?.teacher?.fullName}</strong> from stream{' '}
+              <strong>{selectedStream?.streamName}</strong>?
+            </p>
+            <p style={styles.confirmSub}>
+              The stream keeps its students and history — only the teacher link is removed.
+              You can assign a new teacher at any time.
+            </p>
+          </div>
+          <ModalActions>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="danger" onClick={handleRemoveTeacher} disabled={submitting}>
+              {submitting ? 'Removing…' : 'Yes, Remove Teacher'}
+            </Button>
+          </ModalActions>
         </Modal>
       )}
 
@@ -441,7 +536,7 @@ export default function Classes() {
 }
 
 // ── STREAM CARD ───────────────────────────────────────────────────────
-function StreamCard({ stream, onAssignTeacher }) {
+function StreamCard({ stream, onAssignTeacher, onRemoveTeacher }) {
   const hasTeacher = !!stream.teacher;
 
   return (
@@ -454,19 +549,29 @@ function StreamCard({ stream, onAssignTeacher }) {
           background: hasTeacher ? tokens.colors.success : tokens.colors.borderStrong,
         }} />
         <span style={streamStyles.teacherText}>
-          {hasTeacher ? stream.teacher.fullName : 'No teacher assigned'}
+          {hasTeacher ? stream.teacher.fullName : 'Unassigned'}
         </span>
       </div>
 
       <div style={streamStyles.capacity}>Capacity: {stream.capacity} students</div>
 
-      <Button
-        variant="secondary" size="sm"
-        style={{ width: '100%' }}
-        onClick={() => onAssignTeacher(stream)}
-      >
-        {hasTeacher ? '↩ Reassign Teacher' : '+ Assign Teacher'}
-      </Button>
+      <div style={streamStyles.actionRow}>
+        <Button
+          variant="secondary" size="sm"
+          style={{ flex: 1 }}
+          onClick={() => onAssignTeacher(stream)}
+        >
+          {hasTeacher ? '↩ Reassign' : '+ Assign Teacher'}
+        </Button>
+        {hasTeacher && (
+          <Button
+            variant="danger" size="sm"
+            onClick={onRemoveTeacher}
+          >
+            Remove
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -523,6 +628,7 @@ const styles = {
   },
   teacherName: { fontWeight: 600, fontSize: 14, color: tokens.colors.textPrimary },
   teacherUsername: { fontSize: 12, color: tokens.colors.textMuted },
+  teacherCurrentStream: { color: tokens.colors.warning, fontWeight: 600 },
   checkmark: { marginLeft: 'auto', color: tokens.colors.success, fontWeight: 700, fontSize: 16 },
   noTeachersMsg: { textAlign: 'center', padding: '24px 0', color: tokens.colors.textSecondary, fontSize: 14 },
 };
@@ -539,4 +645,5 @@ const streamStyles = {
   dot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   teacherText: { fontSize: 13, color: tokens.colors.textSecondary },
   capacity: { fontSize: 12, color: tokens.colors.textMuted, marginBottom: 12 },
+  actionRow: { display: 'flex', gap: 8 },
 };

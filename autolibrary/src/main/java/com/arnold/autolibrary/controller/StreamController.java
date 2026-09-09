@@ -1,7 +1,7 @@
 package com.arnold.autolibrary.controller;
 
-import com.arnold.autolibrary.model.SchoolClass;
 import com.arnold.autolibrary.model.Stream;
+import com.arnold.autolibrary.model.UserDetails;
 import com.arnold.autolibrary.services.StreamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -41,12 +41,40 @@ public class StreamController {
         return ResponseEntity.ok(stream);
     }
 
-    //Assingning a teacehr to a stream
+    //Assigning (or reassigning) a teacher to a stream. When this would
+    //displace an existing teacher<->stream link, the service returns a
+    //409 with a warning unless confirm=true is sent.
     @PutMapping("/{id}/teacher")
-    public ResponseEntity<?>AssignTeacher(@PathVariable int id , @RequestParam int userId){
-        Stream updated = streamService.assignTeacher(id,userId);
+    public ResponseEntity<?>assignTeacher(@PathVariable int id, @RequestBody AssignTeacherRequest request){
+        Stream updated = streamService.assignTeacher(id, request.getUserId(), request.isConfirm());
         return ResponseEntity.ok(updated);
     }
 
+    //Unassigns whoever currently holds the stream — students and history
+    //are untouched.
+    @DeleteMapping("/{id}/teacher")
+    public ResponseEntity<?>removeTeacher(@PathVariable int id){
+        Stream updated = streamService.removeTeacher(id);
+        return ResponseEntity.ok(updated);
+    }
+
+    //Currently assigned teacher, or null. Both roles — a teacher may
+    //only read their own stream (enforced in the service).
+    @GetMapping("/{id}/teacher")
+    public ResponseEntity<?>getTeacher(@PathVariable int id){
+        UserDetails teacher = streamService.getTeacher(id);
+        return ResponseEntity.ok(teacher);
+    }
+
+    public static class AssignTeacherRequest {
+        private int userId;
+        private boolean confirm;
+
+        public int getUserId() { return userId; }
+        public void setUserId(int userId) { this.userId = userId; }
+
+        public boolean isConfirm() { return confirm; }
+        public void setConfirm(boolean confirm) { this.confirm = confirm; }
+    }
 
 }

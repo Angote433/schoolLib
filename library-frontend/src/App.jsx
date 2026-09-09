@@ -10,6 +10,7 @@ import Books from './pages/Books';
 import Distributions from './pages/Distributions';
 import Borrows from './pages/Borrows';
 import Losses from './pages/Losses';
+import Settings from './pages/Settings';
 
 // ── PLACEHOLDER PAGES ─────────────────────────────────────────────────
 // We build each one properly from Day 4 onwards
@@ -152,6 +153,12 @@ function App() {
           <Route path="/losses" element={
             <ProtectedRoute>
               <Losses />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           } />
 

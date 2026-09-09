@@ -39,8 +39,9 @@ public class BorrowController {
     /*
     Librarian will scn,and mark book as returned
      */
-    @PutMapping("/return/{qrCode}")
-    public ResponseEntity<?>returnBook(@PathVariable String qrCode){
+    //Query param, not a path variable — see BookController#scanBook for why.
+    @PutMapping("/return")
+    public ResponseEntity<?>returnBook(@RequestParam String qrCode){
         BorrowRecord record  = borrowService.returnBook(qrCode);
         return ResponseEntity.ok(record);
     }
